@@ -14,6 +14,11 @@ taxonomy,TX03.1.6,Other Advanced Power Generation,medium
 taxonomy,TX03.2.1,Electrochemical Storage Batteries,medium
 taxonomy,TX03.2.2,Electrochemical Storage Fuel Cells,medium
 taxonomy,TX14.2.3,Heat Rejection and Storage,medium
+taxonomy,TX06.3.1,Medical Diagnosis and Prognosis,medium
+taxonomy,TX06.3.2,Long-Duration Health,high
+taxonomy,TX06.3.3,Behavioral Health and Performance,medium
+taxonomy,TX06.3.4,Human Performance Sleep and Cognition,medium
+taxonomy,TX06.5,Radiation Protection and Modeling,high
 project,95135,GRC Impure-Water Electrolysis,manual
 project,33080,MOXIE,manual
 project,116307,Regenerative Fuel Cell,manual

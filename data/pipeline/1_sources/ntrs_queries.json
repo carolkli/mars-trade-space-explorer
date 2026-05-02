@@ -1,0 +1,106 @@
+{
+  "_doc": "NTRS search strategies. Each strategy runs every query and caps at limit_per_query. Filters are AND-ed. Subject category IDs: 51=Life Sciences (General), 54=Man/System Tech & Life Support, 91=Lunar/Planetary Science & Exploration, 12=Astronautics (General), 16=Space Transportation & Safety, 88=Space Sciences (General).",
+
+  "strategies": [
+    {
+      "name": "food_approach_diversity",
+      "description": "Fill gaps in food production approaches — algae/insect/mushroom/aeroponic/vertical farming",
+      "queries": [
+        "algae bioreactor crewed mission",
+        "spirulina space life support",
+        "insect protein bioregenerative",
+        "mushroom mycelium ECLSS",
+        "vertical farming Mars",
+        "aeroponics microgravity",
+        "cellular agriculture spaceflight",
+        "fungal protein closed loop"
+      ],
+      "filters": {
+        "subjectCategoryIds": [51, 54],
+        "fromYear": 2010
+      },
+      "limit_per_query": 25,
+      "priority": "high"
+    },
+
+    {
+      "name": "plant_systems_heritage",
+      "description": "Plant growth chambers, ISS Veggie/APH, lighting, hydroponics — flight-validated tech",
+      "queries": [
+        "Veggie ISS plant growth",
+        "Advanced Plant Habitat",
+        "plant growth chamber Mars surface",
+        "LED horticulture spaceflight",
+        "hydroponic crewed mission",
+        "salad machine space",
+        "BIOS-3 closed system",
+        "MELISSA bioregenerative",
+        "CELSS controlled ecological"
+      ],
+      "filters": {
+        "subjectCategoryIds": [51, 54],
+        "fromYear": 2005
+      },
+      "limit_per_query": 25,
+      "priority": "high"
+    },
+
+    {
+      "name": "eclss_loop_closure",
+      "description": "Closed-loop ECLSS papers for the gap-report synthesis — water/air/waste recycling",
+      "queries": [
+        "atmosphere revitalization Mars",
+        "water recovery system ISS",
+        "urine processor brine",
+        "carbon dioxide reduction Sabatier",
+        "trace contaminant control",
+        "solid waste processing crewed",
+        "CO2 oxygen recovery"
+      ],
+      "filters": {
+        "subjectCategoryIds": [54],
+        "fromYear": 2008
+      },
+      "limit_per_query": 20,
+      "priority": "medium"
+    },
+
+    {
+      "name": "isru_food_water",
+      "description": "Mars ISRU especially anything that becomes food or water — regolith, perchlorate, atmospheric",
+      "queries": [
+        "Mars regolith food production",
+        "perchlorate remediation Mars",
+        "Martian atmosphere water extraction",
+        "regolith hydroponic substrate",
+        "MOXIE oxygen Mars",
+        "in situ water mining Mars"
+      ],
+      "filters": {
+        "subjectCategoryIds": [54, 91],
+        "fromYear": 2010
+      },
+      "limit_per_query": 20,
+      "priority": "medium"
+    },
+
+    {
+      "name": "trl_and_lessons_learned",
+      "description": "ISS/MIR/Skylab heritage papers — high-TRL flight experience and what failed",
+      "queries": [
+        "ISS lessons learned ECLSS",
+        "Mir food system",
+        "Skylab habitability",
+        "long duration spaceflight nutrition",
+        "ISS galley crew time",
+        "spaceflight food acceptability"
+      ],
+      "filters": {
+        "subjectCategoryIds": [51, 54],
+        "fromYear": 2000
+      },
+      "limit_per_query": 20,
+      "priority": "medium"
+    }
+  ]
+}

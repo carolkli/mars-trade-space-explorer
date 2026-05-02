@@ -26,6 +26,7 @@ RECORDS_FILE = PARSED_DIR / "records.jsonl"
 PARSER_LOG = PARSED_DIR / "parser_log.csv"
 
 PARSER_VERSION = "techport_v1.1"  # bumped: corrected field names to match actual TechPort API
+NTRS_PARSER_VERSION = "ntrs_v1.0"
 
 
 def _get(d, *path, default=None):
@@ -191,6 +192,93 @@ def parse_techport(raw: dict, manifest_row: dict) -> dict | None:
     }
 
 
+def parse_ntrs(raw: dict, manifest_row: dict) -> dict | None:
+    """Convert NTRS citation JSON into the same canonical record schema.
+
+    NTRS records are research papers, not products. Map paper fields to the
+    canonical schema as best we can:
+        title -> title
+        abstract -> description
+        publishedYear -> end_date (treat as the 'last update' equivalent)
+        center -> lead_organization
+        documentType -> responsible_program (e.g., 'Conference Paper')
+        subjectCategories -> primary_taxonomy (use NASA STI subject names)
+
+    TRL is rarely stated in NTRS metadata — left null. The downstream LLM
+    enrichment can read the abstract and infer applicable_subsystems +
+    satisfies_requirements, same as for TechPort records.
+    """
+    cid = str(raw.get("id") or raw.get("citationId") or raw.get("publicId") or manifest_row["project_id"].replace("ntrs_", ""))
+    title = raw.get("title")
+    if not title: return None
+
+    abstract = _strip_html(raw.get("abstract") or raw.get("abstractText") or "")
+
+    # Subject categories — flatten dict-or-string list into ["TX-like-codes"]
+    subject_codes = []
+    for c in (raw.get("subjectCategories") or raw.get("subjects") or []):
+        if isinstance(c, dict):
+            code = c.get("code") or c.get("name") or c.get("id")
+            if code: subject_codes.append(str(code))
+        elif c:
+            subject_codes.append(str(c))
+
+    # Authors / center
+    authors = raw.get("authorAffiliations") or raw.get("authors") or []
+    affiliations = []
+    for a in authors:
+        if isinstance(a, dict):
+            org = a.get("organization") or a.get("affiliation")
+            if org and org not in affiliations:
+                affiliations.append(org if isinstance(org, str) else org.get("name", ""))
+    lead_org = (raw.get("center") or {}).get("name") if isinstance(raw.get("center"), dict) else raw.get("center") or (affiliations[0] if affiliations else None)
+
+    pub_year = raw.get("publishedYear") or raw.get("publicationYear") or raw.get("year")
+
+    # Document type stands in for "program" — useful for filtering tech reports vs conference papers
+    doc_type = raw.get("documentType") or raw.get("publicationType")
+    if isinstance(doc_type, dict): doc_type = doc_type.get("name")
+
+    # Citation URL: NTRS public landing page
+    landing = f"https://ntrs.nasa.gov/citations/{cid}"
+
+    return {
+        "id": f"ntrs_{cid}",
+        "source": {
+            "url":            landing,
+            "fetched_at":     manifest_row["fetched_at"],
+            "raw_path":       manifest_row["raw_path"],
+            "content_hash":   manifest_row["content_hash"],
+            "parser_version": NTRS_PARSER_VERSION,
+            "parsed_at":      datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "source_type":    "ntrs",
+        },
+        "structured": {
+            "project_id":                       cid,
+            "title":                            title,
+            "description":                      abstract,
+            "anticipated_benefits":             "",  # NTRS doesn't have this field
+            "trl_start":                        None,
+            "trl_current":                      None,
+            "trl_end_target":                   None,
+            "project_status":                   "PUBLISHED",
+            "start_date":                       None,
+            "end_date":                         str(pub_year) if pub_year else None,
+            "lead_organization":                lead_org,
+            "responsible_program":              doc_type,
+            "responsible_mission_directorate":  None,
+            "primary_taxonomy":                 subject_codes,
+            "target_destinations":              [],
+        },
+        "citations": {
+            "title":                "ntrs.title",
+            "description":          "ntrs.abstract",
+            "primary_taxonomy":     "ntrs.subjectCategories",
+            "lead_organization":    "ntrs.center | authors[0].organization",
+        },
+    }
+
+
 def _load_existing() -> dict[str, dict]:
     """Load existing parsed records keyed by id."""
     if not RECORDS_FILE.exists(): return {}
@@ -232,7 +320,13 @@ def main(force: bool) -> int:
     new_count = updated_count = skipped_count = failed_count = 0
 
     for row in manifest:
-        rid = f"techport_{row['project_id']}"
+        # NTRS records use the project_id as-is (already namespaced "ntrs_NNNN" in 01b_ntrs_fetch).
+        # TechPort records aren't namespaced in the manifest, so prefix here.
+        source_type = (row.get("source_type") or "").lower()
+        if source_type == "ntrs":
+            rid = row["project_id"] if row["project_id"].startswith("ntrs_") else f"ntrs_{row['project_id']}"
+        else:
+            rid = row["project_id"] if row["project_id"].startswith("techport_") else f"techport_{row['project_id']}"
         # Skip if already parsed at same content hash (idempotent)
         if not force and rid in existing:
             existing_hash = existing[rid].get("source", {}).get("content_hash")
@@ -255,7 +349,8 @@ def main(force: bool) -> int:
                         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds")})
             failed_count += 1
             continue
-        rec = parse_techport(raw, row)
+        # Route to the right parser based on source_type
+        rec = parse_ntrs(raw, row) if source_type == "ntrs" else parse_techport(raw, row)
         if rec is None:
             log.append({"project_id": row["project_id"], "raw_path": row["raw_path"],
                         "status": "NO_TITLE", "message": "no title found, skipped",

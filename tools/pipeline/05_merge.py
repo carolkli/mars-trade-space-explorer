@@ -24,6 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 ENRICHED = ROOT / "data" / "pipeline" / "4_enriched" / "records_enriched.jsonl"
+PARSED   = ROOT / "data" / "pipeline" / "3_parsed" / "records.jsonl"
 TARGET   = ROOT / "data" / "technologies.jsonl"
 LEGACY   = ROOT / "data" / "technologies_legacy.jsonl"
 
@@ -115,18 +116,39 @@ def _build_viewer_record(rec: dict) -> dict | None:
     """Convert a pipeline canonical record into the React viewer's schema."""
     s = rec.get("structured", {})
     e = rec.get("enriched", {})
-    pid = s.get("project_id") or rec.get("id", "").replace("techport_", "")
+    src = rec.get("source", {})
+    rec_id = rec.get("id", "")
+    is_ntrs = rec_id.startswith("ntrs_") or src.get("source_type") == "ntrs"
+    pid = s.get("project_id") or rec_id.replace("techport_", "").replace("ntrs_", "")
     if not pid: return None
 
     subsystem, category = _classify(s.get("primary_taxonomy") or [])
 
-    # Source URLs
-    techport_url = f"https://techport.nasa.gov/projects/{pid}"
-    sources = [{
-        "url": techport_url,
-        "title": f"NASA TechPort {pid}",
-        "flag": "TECHPORT_SCRAPED_AUTHORITATIVE",
-    }]
+    # Source URLs — different schemes for TechPort vs NTRS
+    if is_ntrs:
+        landing_url = f"https://ntrs.nasa.gov/citations/{pid}"
+        sources = [{
+            "url": landing_url,
+            "title": f"NASA NTRS {pid}",
+            "flag": "NTRS_SCRAPED_AUTHORITATIVE",
+        }]
+        flags = ["NTRS_SCRAPED_AUTHORITATIVE"]
+        tags = ["ntrs", e.get("tradespace_role") or "evidence"]
+        entered_by = "pipeline (05_merge.py from 04_enriched, NTRS)"
+        # NTRS subject categories aren't TX codes — fall back to "research" category
+        # if classify didn't find a match
+        if category == "other":
+            category = "research"
+    else:
+        landing_url = f"https://techport.nasa.gov/projects/{pid}"
+        sources = [{
+            "url": landing_url,
+            "title": f"NASA TechPort {pid}",
+            "flag": "TECHPORT_SCRAPED_AUTHORITATIVE",
+        }]
+        flags = ["TECHPORT_SCRAPED_AUTHORITATIVE"]
+        tags = ["techport", e.get("tradespace_role") or "primary"]
+        entered_by = "pipeline (05_merge.py from 04_enriched)"
 
     # TRL block
     trl = {}
@@ -140,10 +162,10 @@ def _build_viewer_record(rec: dict) -> dict | None:
         trl["trl_end_target"] = s["trl_end_target"]
     if s.get("end_date"):
         trl["date"] = s["end_date"]
-    trl["source_ref"] = f"TechPort {pid}"
+    trl["source_ref"] = f"{'NTRS' if is_ntrs else 'TechPort'} {pid}"
 
     record = {
-        "id":                       rec["id"],            # techport_NNNNN format, unique + traceable
+        "id":                       rec_id,
         "name":                     s.get("title", ""),
         "short_description":        _short_description(s.get("description") or "", 250),
         "category":                 category,
@@ -151,7 +173,7 @@ def _build_viewer_record(rec: dict) -> dict | None:
         "function_role":            (e.get("novelty_summary") or "")[:300],
         "applicable_subsystems":    e.get("applicable_subsystems") or [],
         "satisfies_requirements":   e.get("satisfies_requirements") or [],
-        "techport_url":             techport_url,
+        "techport_url":             landing_url,  # viewer uses this field name regardless of source
         "sources":                  sources,
         "trl":                      trl,
         "techport_metadata":        _build_techport_metadata(rec),
@@ -166,30 +188,56 @@ def _build_viewer_record(rec: dict) -> dict | None:
         "loop_closure_role":            "neither",
         # Governance
         "status":      "DRAFT",
-        "entered_by":  "pipeline (05_merge.py from 04_enriched)",
+        "entered_by":  entered_by,
         "date_added":  datetime.now(timezone.utc).date().isoformat(),
-        "flags":       ["TECHPORT_SCRAPED_AUTHORITATIVE"],
-        "tags":        ["techport", e.get("tradespace_role") or "primary"],
+        "flags":       flags,
+        "tags":        tags,
     }
     return record
 
 
 def main(dry_run: bool, no_backup: bool) -> int:
-    if not ENRICHED.exists():
-        sys.exit(f"missing {ENRICHED} — run 03_enrich.py first")
+    if not ENRICHED.exists() and not PARSED.exists():
+        sys.exit(f"missing both {ENRICHED} and {PARSED} — run 02_parse.py first")
 
-    # Load enriched records
-    print(f"Loading enriched records from {ENRICHED.relative_to(ROOT)}...")
+    # Load enriched records (preferred — they have applicable_subsystems + REQ tags)
     records: list[dict] = []
-    with ENRICHED.open(encoding="utf-8") as f:
-        for line in f:
-            if not line.strip(): continue
-            try:
-                records.append(json.loads(line))
-            except json.JSONDecodeError as e:
-                print(f"  WARN bad JSON line: {e}", file=sys.stderr)
+    by_id: dict[str, dict] = {}
+    if ENRICHED.exists():
+        print(f"Loading enriched records from {ENRICHED.relative_to(ROOT)}...")
+        with ENRICHED.open(encoding="utf-8") as f:
+            for line in f:
+                if not line.strip(): continue
+                try:
+                    r = json.loads(line)
+                    records.append(r)
+                    by_id[r["id"]] = r
+                except json.JSONDecodeError as e:
+                    print(f"  WARN bad JSON line: {e}", file=sys.stderr)
+        print(f"  {len(records)} enriched records loaded")
 
-    print(f"  {len(records)} records loaded")
+    # Backfill from parsed: any record present in 3_parsed/ but NOT in 4_enriched/
+    # gets included with empty enrichment fields. The viewer will show it but
+    # without applicable_subsystems / satisfies_requirements until the team tags it.
+    if PARSED.exists():
+        added = 0
+        with PARSED.open(encoding="utf-8") as f:
+            for line in f:
+                if not line.strip(): continue
+                try:
+                    p = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if p["id"] in by_id:
+                    continue  # already have an enriched version
+                p.setdefault("enriched", {})  # empty so _build_viewer_record's e.get() returns None
+                records.append(p)
+                by_id[p["id"]] = p
+                added += 1
+        if added:
+            print(f"  + {added} parsed-only records (no LLM enrichment yet — tag them in the viewer)")
+
+    print(f"  {len(records)} total records to merge")
 
     # Convert
     converted = []

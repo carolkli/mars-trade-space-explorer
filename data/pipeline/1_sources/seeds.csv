@@ -1,0 +1,21 @@
+type,id,description,priority
+taxonomy,TX06.1.1,Atmosphere Revitalization,high
+taxonomy,TX06.1.2,Water Recovery and Management,high
+taxonomy,TX06.1.3,Waste Management,high
+taxonomy,TX06.1.4,Habitation Systems,medium
+taxonomy,TX06.3.5,Food Production Processing and Preservation,high
+taxonomy,TX06.4.1,Air Water Microbial and Acoustic Sensors,medium
+taxonomy,TX07.1.1,Destination Resource Exploration,high
+taxonomy,TX07.1.2,Resource Acquisition Isolation and Preparation,high
+taxonomy,TX07.1.3,Resource Processing for Production of Mission Consumables,high
+taxonomy,TX07.1.4,Resource Processing for Manufacturing Construction and Energy Storage Feedstock,medium
+taxonomy,TX03.1.1,Photovoltaic Electrical Power,medium
+taxonomy,TX03.1.6,Other Advanced Power Generation,medium
+taxonomy,TX03.2.1,Electrochemical Storage Batteries,medium
+taxonomy,TX03.2.2,Electrochemical Storage Fuel Cells,medium
+taxonomy,TX14.2.3,Heat Rejection and Storage,medium
+project,95135,GRC Impure-Water Electrolysis,manual
+project,33080,MOXIE,manual
+project,116307,Regenerative Fuel Cell,manual
+project,93128,UWMS Universal Waste Management,manual
+project,182790,Mars Food Refrigeration,manual

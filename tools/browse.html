@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mars to Table — Fast Browser</title>
+<style>
+  :root { --bg:#fafaf7; --panel:#fff; --border:#d8d6d0; --ink:#1c1c1c; --muted:#6b6b66; --accent:#b6491c; --accent-soft:#f3e2d6; }
+  * { box-sizing: border-box; }
+  body { font: 14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .meta { color: var(--muted); font-size: 12px; }
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; padding: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
+  input[type=text], select, button { font: inherit; padding: 6px 10px; border: 1px solid var(--border); background: white; border-radius: 3px; }
+  input[type=text] { flex: 1; min-width: 200px; }
+  button { cursor: pointer; }
+  button:hover { background: var(--accent-soft); }
+  .cat-pill { padding: 4px 10px; font-size: 12px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; cursor: pointer; }
+  .cat-pill.active { background: var(--accent); color: white; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 13px; }
+  th { background: #f0eee8; cursor: pointer; user-select: none; position: sticky; top: 0; }
+  tr:hover { background: var(--accent-soft); cursor: pointer; }
+  .tag { display: inline-block; padding: 1px 5px; background: #eee; color: #444; border-radius: 2px; font-size: 11px; margin-right: 3px; }
+  .tag.req { background: #e0e8f0; color: #2b4a6b; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  #status { font-size: 12px; color: var(--muted); }
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: flex-start; justify-content: center; padding: 40px 20px; overflow-y: auto; z-index: 100; }
+  .modal-bg.open { display: flex; }
+  .modal { background: white; max-width: 800px; width: 100%; padding: 24px; border-radius: 6px; }
+  .modal h2 { margin: 0 0 8px; font-size: 18px; }
+  .modal label { display: block; font-size: 12px; font-weight: 600; margin: 12px 0 4px; color: var(--muted); }
+  .modal textarea, .modal input[type=text] { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 3px; font: inherit; }
+  .modal textarea { min-height: 60px; resize: vertical; }
+  .row { display: flex; gap: 12px; }
+  .row > * { flex: 1; }
+  .save-bar { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<h1>Mars to Table — Fast Browser <span class="meta" id="status">loading…</span></h1>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="Type to search title / description / tags / id…" autofocus>
+  <select id="trl">
+    <option value="0">All TRL</option>
+    <option value="3">TRL 3+</option>
+    <option value="5">TRL 5+</option>
+    <option value="7">TRL 7+</option>
+    <option value="9">TRL 9</option>
+  </select>
+  <button id="clear">Clear</button>
+</div>
+
+<div class="controls" id="cats" style="display:none">
+  <span class="meta">Categories:</span>
+</div>
+
+<div id="results"></div>
+
+<!-- Detail modal -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal" id="modal">
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+let TECHS = [];
+let FILTER_CAT = '';
+let CURRENT_ID = null;
+
+const $ = id => document.getElementById(id);
+const escape = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function loadData() {
+  $('status').textContent = 'fetching…';
+  const r = await fetch('../data/technologies.jsonl');
+  const txt = await r.text();
+  $('status').textContent = 'parsing…';
+  TECHS = txt.trim().split('\n').filter(Boolean).map(JSON.parse);
+  $('status').textContent = TECHS.length.toLocaleString() + ' loaded';
+  buildCatPills();
+  render();
+}
+
+function buildCatPills() {
+  const counts = {};
+  for (const t of TECHS) counts[t.category] = (counts[t.category] || 0) + 1;
+  const cats = Object.keys(counts).sort();
+  const div = $('cats');
+  div.style.display = '';
+  div.innerHTML = '<span class="meta">Categories:</span>' + cats.map(c =>
+    `<button class="cat-pill" data-cat="${escape(c)}">${escape(c)} (${counts[c]})</button>`
+  ).join('');
+  div.querySelectorAll('.cat-pill').forEach(b => {
+    b.onclick = () => {
+      FILTER_CAT = (FILTER_CAT === b.dataset.cat) ? '' : b.dataset.cat;
+      div.querySelectorAll('.cat-pill').forEach(x => x.classList.toggle('active', x.dataset.cat === FILTER_CAT));
+      render();
+    };
+  });
+}
+
+function render() {
+  const q = $('search').value.trim().toLowerCase();
+  const trlMin = parseInt($('trl').value);
+  const hasFilter = q.length > 0 || FILTER_CAT || trlMin > 0;
+  const out = $('results');
+  if (!hasFilter) {
+    out.innerHTML = `<div class="empty"><strong>${TECHS.length.toLocaleString()}</strong> technologies loaded.<br>Type to search or pick a category above.</div>`;
+    return;
+  }
+  let rows = TECHS;
+  if (FILTER_CAT) rows = rows.filter(t => t.category === FILTER_CAT);
+  if (trlMin) rows = rows.filter(t => (t.trl?.value || 0) >= trlMin);
+  if (q) rows = rows.filter(t =>
+    [t.id, t.name, t.short_description, t.function_role, ...(t.tags||[])]
+      .filter(Boolean).join(' ').toLowerCase().includes(q));
+  const total = rows.length;
+  rows = rows.slice(0, 200);  // Cap render at 200 for snappiness
+  out.innerHTML = `
+    <div class="meta" style="margin-bottom:6px">${total.toLocaleString()} matches${total > 200 ? ' (showing first 200; refine search to narrow)' : ''}</div>
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>Cat</th><th>TRL</th><th>Satisfies</th><th>Tags</th></tr></thead>
+      <tbody>
+        ${rows.map(t => `
+          <tr data-id="${escape(t.id)}">
+            <td><code>${escape(t.id)}</code>${t.techport_url ? ` <a href="${escape(t.techport_url)}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;padding:1px 4px;background:var(--accent-soft);color:var(--accent);border-radius:3px;text-decoration:none">TP</a>` : ''}</td>
+            <td><strong>${escape(t.name)}</strong><br><span class="meta">${escape((t.short_description || '').slice(0, 120))}</span></td>
+            <td>${escape(t.category)}</td>
+            <td>${t.trl?.value ?? '?'}</td>
+            <td>${(t.satisfies_requirements||[]).map(r => `<span class="tag req">${escape(r)}</span>`).join('')}</td>
+            <td>${(t.tags||[]).map(tg => `<span class="tag">${escape(tg)}</span>`).join('')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+  out.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.onclick = () => openDetail(tr.dataset.id);
+  });
+}
+
+function openDetail(id) {
+  const t = TECHS.find(x => x.id === id);
+  if (!t) return;
+  CURRENT_ID = id;
+  const m = $('modal-content');
+  m.innerHTML = `
+    <button onclick="closeModal()" style="float:right">×</button>
+    <h2>${escape(t.name)}</h2>
+    <div class="meta">${escape(t.id)} · ${escape(t.category)} · TRL ${t.trl?.value ?? '?'}</div>
+    ${t.techport_url ? `<p><a href="${escape(t.techport_url)}" target="_blank">→ NASA TechPort</a></p>` : ''}
+    <p>${escape(t.short_description || '')}</p>
+    <p><strong>Function:</strong> ${escape(t.function_role || '—')}</p>
+    <p><strong>Applicable subsystems:</strong> ${(t.applicable_subsystems||[]).map(s=>`<span class="tag">${escape(s)}</span>`).join(' ') || '—'}</p>
+    <p><strong>Satisfies REQs:</strong> ${(t.satisfies_requirements||[]).map(r=>`<span class="tag req">${escape(r)}</span>`).join(' ') || '—'}</p>
+
+    <div class="save-bar"><strong>✏️ Edit tags & notes</strong></div>
+    <label>Tags (comma-separated)</label>
+    <input type="text" id="edit-tags" value="${escape((t.tags||[]).join(', '))}">
+    <div class="row">
+      <div>
+        <label>Applicable subsystems (comma-separated, e.g. ST1.1, ST2.3)</label>
+        <input type="text" id="edit-subs" value="${escape((t.applicable_subsystems||[]).join(', '))}">
+      </div>
+      <div>
+        <label>Satisfies requirements (comma-separated, e.g. REQ-SYS-001)</label>
+        <input type="text" id="edit-reqs" value="${escape((t.satisfies_requirements||[]).join(', '))}">
+      </div>
+    </div>
+    <label>Notes (free text)</label>
+    <textarea id="edit-notes">${escape(t.notes || '')}</textarea>
+    <label>Status</label>
+    <select id="edit-status">
+      ${['DRAFT','REVIEWED','APPROVED','REJECTED'].map(s =>
+        `<option value="${s}"${(t.status||'DRAFT')===s?' selected':''}>${s}</option>`).join('')}
+    </select>
+
+    <div class="save-bar">
+      <button onclick="saveEdit()" style="background:var(--accent);color:white;border-color:var(--accent)">Save</button>
+      <button onclick="closeModal()">Cancel</button>
+      <span id="save-status" class="meta"></span>
+    </div>
+  `;
+  $('modal-bg').classList.add('open');
+}
+
+function closeModal() {
+  $('modal-bg').classList.remove('open');
+  CURRENT_ID = null;
+}
+
+async function saveEdit() {
+  if (!CURRENT_ID) return;
+  const split = s => s.split(',').map(x => x.trim()).filter(Boolean);
+  const body = {
+    id: CURRENT_ID,
+    tags: split($('edit-tags').value),
+    applicable_subsystems: split($('edit-subs').value),
+    satisfies_requirements: split($('edit-reqs').value),
+    notes: $('edit-notes').value.trim(),
+    status: $('edit-status').value,
+  };
+  $('save-status').textContent = 'saving…';
+  try {
+    const r = await fetch('/api/save-tech', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    if (j.ok) {
+      // Update local copy
+      const t = TECHS.find(x => x.id === CURRENT_ID);
+      Object.assign(t, body);
+      $('save-status').textContent = 'saved ✓';
+      setTimeout(() => { closeModal(); render(); }, 600);
+    } else {
+      $('save-status').textContent = 'error: ' + (j.error || 'unknown');
+    }
+  } catch (e) {
+    $('save-status').textContent = 'error: ' + e.message;
+  }
+}
+
+// Wire up
+$('search').oninput = render;
+$('trl').onchange = render;
+$('clear').onclick = () => { $('search').value=''; $('trl').value='0'; FILTER_CAT=''; document.querySelectorAll('.cat-pill.active').forEach(b=>b.classList.remove('active')); render(); };
+$('modal-bg').onclick = e => { if (e.target.id === 'modal-bg') closeModal(); };
+document.onkeydown = e => { if (e.key === 'Escape') closeModal(); };
+
+loadData();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mars to Table — React Trade Space Explorer</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg:#fafaf7; --panel:#fff; --border:#d8d6d0; --ink:#1c1c1c; --muted:#6b6b66;
+    --accent:#b6491c; --accent-soft:#f3e2d6; --gap:#c43e3e; --gap-soft:#fbe7e7;
+    --bridge:#4d6b9a; --bridge-soft:#e3edf9; --good:#2f7a3a; --good-soft:#e1f1e3;
+    --warn:#b08000; --warn-soft:#fbf1d4;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  button{font:inherit;cursor:pointer;padding:5px 10px;border:1px solid var(--border);
+    background:var(--panel);border-radius:4px;color:var(--ink);font-size:13px}
+  button:hover{background:#f2efea}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.primary:hover{background:#9c3e18}
+  button.small{padding:3px 8px;font-size:12px}
+  input[type=text],select,textarea{font:inherit;padding:5px 8px;border:1px solid var(--border);
+    background:var(--panel);border-radius:4px}
+  input[type=text]{min-width:160px}
+  header.app-header{padding:10px 18px;border-bottom:1px solid var(--border);background:var(--panel);
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header.app-header h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
+  header.app-header .meta{color:var(--muted);font-size:12px}
+  header.app-header .right{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .tabs{display:flex;gap:4px;padding:0 18px;background:var(--panel);
+    border-bottom:1px solid var(--border);overflow-x:auto}
+  .tab{padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;user-select:none;
+    white-space:nowrap;font-size:13px}
+  .tab.active{border-bottom-color:var(--accent);color:var(--accent);font-weight:600}
+  .tab .pill{background:var(--accent-soft);color:var(--accent);padding:1px 6px;margin-left:4px;
+    border-radius:8px;font-size:11px;font-weight:600}
+  main{padding:14px 18px 60px;max-width:1500px;margin:0 auto}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;
+    padding:12px 14px;margin-bottom:12px}
+  .panel h2{font-size:13px;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)}
+  .empty{color:var(--muted);font-style:italic;padding:14px;text-align:center}
+  .help{background:#fff7ec;border:1px solid #f5d8a4;padding:8px 12px;border-radius:4px;
+    color:#6b4a1a;font-size:13px;margin-bottom:12px}
+  .tag{display:inline-block;padding:1px 6px;margin:1px 2px 1px 0;border-radius:3px;font-size:11px;
+    background:#eee8e0;color:#5a4f42}
+  .tag.req{background:var(--accent-soft);color:var(--accent);font-family:monospace}
+  .tag.gap{background:var(--gap-soft);color:var(--gap)}
+  .tag.bridge{background:var(--bridge-soft);color:var(--bridge)}
+  .tag.good{background:var(--good-soft);color:var(--good)}
+  .tag.warn{background:var(--warn-soft);color:var(--warn)}
+  code{font-size:12px;background:#f4efe8;padding:1px 4px;border-radius:3px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;
+    letter-spacing:0.04em;cursor:pointer;user-select:none;background:#faf6f1;position:sticky;top:0}
+  th:hover{background:#f0eae0}
+  tr:hover{background:#faf6f1}
+  .ss-grid{display:flex;flex-direction:column;gap:14px}
+  .ss-grid-inner{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
+  .ss-group{background:#f5f1ea;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+  .ss-group-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  .ss-group-name{font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:var(--accent)}
+  .ss-group-meta{font-size:12px;color:var(--muted)}
+  .ss-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px;
+    display:flex;flex-direction:column;gap:6px}
+  .ss-card.has-selection{border-left:4px solid var(--accent)}
+  .ss-card.unfilled{border-left:4px solid var(--muted)}
+  .ss-card .name{font-weight:600;font-size:14px}
+  .ss-card .desc{font-size:11px;color:var(--muted)}
+  .ss-card .candidates{max-height:180px;overflow-y:auto;border:1px solid var(--border);
+    border-radius:4px;padding:5px 8px;font-size:12px}
+  .ss-card .cand-row{display:flex;align-items:flex-start;gap:6px;padding:2px 0;cursor:pointer}
+  .ss-card .cand-row:hover{background:#faf6f1}
+  .ss-card .cand-row.selected{background:var(--accent-soft);font-weight:600}
+  .ss-card .cand-row .meta{color:var(--muted);font-size:11px}
+  .ss-card .totals{font-size:11px;color:var(--muted);border-top:1px dashed var(--border);padding-top:5px}
+  .ss-card .filter{font-size:11px;padding:3px 6px;width:100%}
+  .totals-bar{background:var(--panel);border:1px solid var(--border);border-radius:6px;
+    padding:8px 12px;margin-bottom:12px;display:flex;flex-direction:column;gap:6px}
+  .totals-section{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:4px 8px;
+    border-left:3px solid var(--accent);background:#faf6f1;border-radius:4px}
+  .totals-label{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.08em;
+    padding-right:8px;border-right:1px solid var(--border)}
+  .totals-item{display:flex;gap:4px;font-size:13px}
+  .totals-item .label{color:var(--muted)}
+  .totals-item .val{font-weight:600;font-family:monospace}
+  .totals-item.over .val{color:var(--gap)}
+  .totals-item .val.pos{color:var(--good)}
+  .totals-item .val.neg{color:var(--gap)}
+  .reqs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+  .req-cat{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:8px 10px}
+  .req-cat h4{margin:0 0 6px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em}
+  .req-row{display:flex;align-items:flex-start;gap:6px;padding:2px 0;font-size:12px}
+  .req-icon{width:16px;text-align:center;font-weight:700}
+  .req-icon.met{color:var(--good)}
+  .req-icon.unmet{color:var(--gap)}
+  .req-icon.na{color:var(--muted)}
+  .compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+  .arch-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px}
+  .arch-card h3{margin:0 0 4px;font-size:14px}
+  .arch-card .stat{display:flex;justify-content:space-between;font-size:12px;padding:2px 0}
+  .arch-card .stat .v{font-family:monospace;font-weight:600}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;
+    justify-content:center;z-index:100}
+  .modal-content{background:var(--panel);padding:18px;border-radius:6px;max-width:800px;
+    max-height:80vh;overflow-y:auto;width:90%}
+  .integ-table tr.balanced{background:var(--good-soft)}
+  .integ-table tr.deficit{background:var(--gap-soft)}
+  .integ-table tr.surplus{background:var(--warn-soft)}
+  .integ-table tr.orphan{background:var(--bridge-soft)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+// ============ CONSTANTS ============
+const ESM_FACTORS = { Fv: 66, Fp: 87, Fct: 1.0 };
+const STORAGE_KEY = 'mtt_saved_architectures';
+const CREW_BUDGET_HR = 18;
+const KEY_FLOWS = [
+  {flow:'electric_power_dc', label:'power', units:'W'},
+  {flow:'potable_water', label:'potable', units:'L/sol'},
+  {flow:'irrigation_water', label:'irrigation', units:'L/sol'},
+  {flow:'o2_gas', label:'O2', units:'kg/sol'},
+  {flow:'co2_gas', label:'CO2', units:'kg/sol'},
+  {flow:'crew_time_routine', label:'crew rt', units:'hr/sol'},
+];
+
+// ============ HELPERS ============
+const num = (v, d=0) => (v == null || isNaN(v)) ? d : Number(v);
+const newId = () => 'arch_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+const downloadJSON = (data, filename) => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+};
+const downloadCSV = (rows, filename) => {
+  const csv = rows.map(r => r.map(c => {
+    const s = String(c ?? '');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+};
+
+function candidateTechsFor(sub, techs) {
+  const cats = new Set(sub.match_categories || []);
+  const tags = new Set(sub.match_tags || []);
+  const eos = new Set(sub.expected_outputs || []);
+  return techs.filter(d => {
+    // Most generous: explicit applicable_subsystems wins (allows multi-tagging like BSF in both protein + waste)
+    if ((d.applicable_subsystems || []).includes(sub.id)) return true;
+    if (cats.has(d.category)) return true;
+    if ((d.tags || []).some(t => tags.has(t))) return true;
+    if ((d.outputs || []).some(o => eos.has(o.flow_id))) return true;
+    return false;
+  });
+}
+
+// Qualitative labels — for early-stage exploration when exact numbers are uncertain
+function qualPower(w) {
+  if (w == null || w === 0) return {label:'none', cls:'good'};
+  if (w < 100) return {label:'very low', cls:'good'};
+  if (w < 500) return {label:'low', cls:'good'};
+  if (w < 2000) return {label:'med', cls:'warn'};
+  if (w < 10000) return {label:'high', cls:'warn'};
+  return {label:'very high', cls:'gap'};
+}
+function qualMass(kg) {
+  if (kg == null || kg === 0) return {label:'?', cls:''};
+  if (kg < 50) return {label:'light', cls:'good'};
+  if (kg < 300) return {label:'medium', cls:'warn'};
+  return {label:'heavy', cls:'gap'};
+}
+function qualCrew(hr) {
+  if (hr == null || hr === 0) return {label:'hands-off', cls:'good'};
+  if (hr < 0.2) return {label:'low touch', cls:'good'};
+  if (hr < 0.5) return {label:'med touch', cls:'warn'};
+  return {label:'crew-heavy', cls:'gap'};
+}
+function qualTRL(trl) {
+  if (trl == null) return {label:'unknown', cls:''};
+  if (trl >= 7) return {label:'flight-ready', cls:'good'};
+  if (trl >= 4) return {label:'development', cls:'warn'};
+  return {label:'concept', cls:'gap'};
+}
+
+function aggregateSubsystem(sub, selections, techs) {
+  const inputs = {}, outputs = {};
+  let mass = 0, vol = 0, power = 0, crew = 0;
+  const sel = selections[sub.id] || [];
+  sel.forEach(tid => {
+    const d = techs.find(x => x.id === tid); if (!d) return;
+    mass += num(d.mass_kg?.value);
+    vol += num(d.volume_m3?.value);
+    power += num(d.power_w?.nominal);
+    crew += num(d.crew_time_hr_per_sol?.nominal);
+    (d.inputs || []).forEach(i => inputs[i.flow_id] = (inputs[i.flow_id] || 0) + num(i.rate));
+    (d.outputs || []).forEach(o => outputs[o.flow_id] = (outputs[o.flow_id] || 0) + num(o.rate));
+  });
+  return { inputs, outputs, mass, vol, power, crew, count: sel.length };
+}
+
+function computeArchitectureMetrics(selections, techs, subsystems) {
+  let mass=0, vol=0, power=0, crew=0;
+  const trls = [];
+  const reqsCovered = new Set();
+  const flowBalance = {};
+  const aggBySS = {};
+  subsystems.forEach(s => {
+    const a = aggregateSubsystem(s, selections, techs);
+    aggBySS[s.id] = a;
+    mass += a.mass; vol += a.vol; power += a.power; crew += a.crew;
+    (selections[s.id]||[]).forEach(tid => {
+      const d = techs.find(x => x.id === tid); if (!d) return;
+      if (d.trl?.value) trls.push(d.trl.value);
+      (d.satisfies_requirements||[]).forEach(r => reqsCovered.add(r));
+    });
+    Object.entries(a.outputs).forEach(([f,r]) => flowBalance[f] = (flowBalance[f]||0) + r);
+    Object.entries(a.inputs).forEach(([f,r]) => flowBalance[f] = (flowBalance[f]||0) - r);
+  });
+  const esm = mass + vol*ESM_FACTORS.Fv + (power/1000)*ESM_FACTORS.Fp + (crew*365)*ESM_FACTORS.Fct;
+  return {
+    mass, vol, power, crew, esm,
+    techCount: Object.values(selections).reduce((a,s)=>a+s.length, 0),
+    trlAvg: trls.length ? trls.reduce((a,b)=>a+b,0)/trls.length : null,
+    trlMin: trls.length ? Math.min(...trls) : null,
+    trlMax: trls.length ? Math.max(...trls) : null,
+    reqsCovered, flowBalance, aggBySS,
+  };
+}
+
+function autoSuggest(strategy, techs, subsystems) {
+  const out = {};
+  subsystems.forEach(s => {
+    const cands = candidateTechsFor(s, techs);
+    if (!cands.length) { out[s.id] = []; return; }
+    let pick;
+    if (strategy === 'highest_trl') pick = cands.sort((a,b)=>(b.trl?.value||0)-(a.trl?.value||0))[0];
+    else if (strategy === 'lowest_mass') pick = cands.sort((a,b)=>num(a.mass_kg?.value,1e9)-num(b.mass_kg?.value,1e9))[0];
+    else if (strategy === 'lowest_power') pick = cands.sort((a,b)=>num(a.power_w?.nominal,1e9)-num(b.power_w?.nominal,1e9))[0];
+    else if (strategy === 'flight_heritage') pick = cands.filter(c => (c.trl?.value||0) >= 9)[0] || cands.sort((a,b)=>(b.trl?.value||0)-(a.trl?.value||0))[0];
+    else if (strategy === 'bioregen') pick = cands.find(c => ['crop_production','microbial_production','fungi_production','animal_production','cellular_agriculture'].includes(c.category)) || cands.sort((a,b)=>(b.trl?.value||0)-(a.trl?.value||0))[0];
+    out[s.id] = pick ? [pick.id] : [];
+  });
+  return out;
+}
+
+// ============ DATA LOADING ============
+async function loadAllData() {
+  const out = { techs: null, subsystems: null, groups: null, reqs: null, gapReport: null, error: null };
+  // Cache-bust with a timestamp to defeat browser caching of the JSONL
+  const cb = '?' + Date.now();
+  try {
+    const [tRes, sRes, rRes, gRes] = await Promise.all([
+      fetch('../data/technologies.jsonl' + cb, { cache: 'no-store' }),
+      fetch('../data/subsystems.json' + cb, { cache: 'no-store' }),
+      fetch('../data/requirements.json' + cb, { cache: 'no-store' }),
+      fetch('../data/pipeline/5_synthesis/gap_report.md' + cb, { cache: 'no-store' }).catch(() => null),
+    ]);
+    if (gRes && gRes.ok) {
+      out.gapReport = await gRes.text();
+    }
+    if (tRes.ok) {
+      const txt = await tRes.text();
+      out.techs = txt.trim().split('\n').filter(l=>l.trim()).map(l=>JSON.parse(l));
+    }
+    if (sRes.ok) {
+      const obj = await sRes.json();
+      out.subsystems = obj.subsystems || [];
+      out.groups = obj.groups || [];
+    }
+    if (rRes.ok) {
+      const obj = await rRes.json();
+      out.reqs = obj;
+    }
+  } catch (e) { out.error = e.message; }
+  return out;
+}
+
+// ============ APP ============
+function App() {
+  const [techs, setTechs] = useState([]);
+  const [subsystems, setSubsystems] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [reqs, setReqs] = useState({requirements: [], categories: {}});
+  const [gapReport, setGapReport] = useState('');
+  const [selections, setSelections] = useState({});
+  const [archName, setArchName] = useState('Untitled architecture');
+  const [savedArchs, setSavedArchs] = useState([]);
+  const [activeTab, setActiveTab] = useState('builder');
+  const [compareIds, setCompareIds] = useState([]);
+  const [detailTechId, setDetailTechId] = useState(null);
+  const [loadStatus, setLoadStatus] = useState('Loading...');
+
+  // Load data on mount
+  useEffect(() => {
+    loadAllData().then(d => {
+      if (d.techs) setTechs(d.techs);
+      if (d.subsystems) setSubsystems(d.subsystems);
+      if (d.groups) setGroups(d.groups);
+      if (d.reqs) setReqs(d.reqs);
+      if (d.gapReport) setGapReport(d.gapReport);
+      const sel = {}; (d.subsystems||[]).forEach(s => sel[s.id] = []);
+      setSelections(sel);
+      const allOk = d.techs && d.subsystems && d.reqs;
+      setLoadStatus(allOk ? `${d.techs.length} techs, ${d.subsystems.length} subsystems, ${d.reqs.requirements.length} REQs loaded` : 'Auto-load failed — use file pickers');
+    });
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      setSavedArchs(saved);
+    } catch (e) {}
+  }, []);
+
+  // Manual file pickers (fallback for file:// users)
+  const onTechFile = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const data = r.result.trim().split('\n').filter(l=>l.trim()).map(l=>JSON.parse(l));
+      setTechs(data); setLoadStatus(`${data.length} techs loaded`);
+    };
+    r.readAsText(f);
+  };
+  const onSSFile = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const obj = JSON.parse(r.result);
+      setSubsystems(obj.subsystems || []); setGroups(obj.groups || []);
+      const sel = {}; (obj.subsystems||[]).forEach(s => sel[s.id] = []);
+      setSelections(sel);
+    };
+    r.readAsText(f);
+  };
+  const onReqFile = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader(); r.onload = () => setReqs(JSON.parse(r.result)); r.readAsText(f);
+  };
+
+  // Architecture management
+  const toggleTech = (subId, techId) => {
+    setSelections(prev => {
+      const cur = prev[subId] || [];
+      const next = cur.includes(techId) ? cur.filter(t => t !== techId) : [...cur, techId];
+      return { ...prev, [subId]: next };
+    });
+  };
+  const clearArch = () => {
+    const sel = {}; subsystems.forEach(s => sel[s.id] = []);
+    setSelections(sel); setArchName('Untitled architecture');
+  };
+  const saveArch = () => {
+    const arch = {
+      id: newId(), name: archName, selections,
+      createdAt: new Date().toISOString(),
+      metrics: computeArchitectureMetrics(selections, techs, subsystems),
+    };
+    delete arch.metrics.aggBySS; delete arch.metrics.flowBalance; delete arch.metrics.reqsCovered;
+    arch.metrics.reqsCovered = Array.from(computeArchitectureMetrics(selections, techs, subsystems).reqsCovered);
+    const next = [...savedArchs, arch];
+    setSavedArchs(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  };
+  const loadArch = id => {
+    const a = savedArchs.find(x => x.id === id); if (!a) return;
+    setSelections(a.selections); setArchName(a.name);
+  };
+  const deleteArch = id => {
+    const next = savedArchs.filter(a => a.id !== id);
+    setSavedArchs(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setCompareIds(cs => cs.filter(c => c !== id));
+  };
+  const applySuggest = strategy => setSelections(autoSuggest(strategy, techs, subsystems));
+
+  const metrics = useMemo(
+    () => computeArchitectureMetrics(selections, techs, subsystems),
+    [selections, techs, subsystems]
+  );
+
+  if (!techs.length || !subsystems.length) {
+    return (<div>
+      <header className="app-header">
+        <h1>Mars to Table — React Trade Space Explorer</h1>
+        <span className="meta">{loadStatus}</span>
+        <div className="right">
+          <input type="file" id="tFile" accept=".jsonl" style={{display:'none'}} onChange={onTechFile} />
+          <input type="file" id="sFile" accept=".json" style={{display:'none'}} onChange={onSSFile} />
+          <input type="file" id="rFile" accept=".json" style={{display:'none'}} onChange={onReqFile} />
+          <button onClick={()=>document.getElementById('tFile').click()}>Load technologies.jsonl</button>
+          <button onClick={()=>document.getElementById('sFile').click()}>Load subsystems.json</button>
+          <button onClick={()=>document.getElementById('rFile').click()}>Load requirements.json</button>
+        </div>
+      </header>
+      <main>
+        <div className="help">
+          Auto-load failed — typically because you opened this as a <code>file://</code> URL and the browser blocks
+          local fetches. Either run a server (e.g. <code>python -m http.server 8000</code> from the
+          <code>05_trade_space_explorer/</code> root then open
+          <code>http://localhost:8000/tools/react_viewer.html</code>),
+          or click the three Load buttons above to pick the files manually from <code>data/</code>.
+        </div>
+      </main>
+    </div>);
+  }
+
+  return (<div>
+    <Header
+      loadStatus={loadStatus} archName={archName} setArchName={setArchName}
+      onClear={clearArch} onSave={saveArch} onSuggest={applySuggest}
+      onExport={() => downloadJSON({name:archName, selections, metrics}, `architecture_${Date.now()}.json`)}
+      savedArchs={savedArchs} onLoadArch={loadArch} onDeleteArch={deleteArch}
+    />
+    <TabBar activeTab={activeTab} setActiveTab={setActiveTab} metrics={metrics} reqs={reqs} />
+    <main>
+      {activeTab === 'builder' && <BuilderTab
+        groups={groups} subsystems={subsystems} techs={techs}
+        selections={selections} toggleTech={toggleTech} setDetailTechId={setDetailTechId}
+        metrics={metrics}
+      />}
+      {activeTab === 'spreadsheet' && <SpreadsheetTab techs={techs} setDetailTechId={setDetailTechId} />}
+      {activeTab === 'flows' && <FlowsTab subsystems={subsystems} metrics={metrics} />}
+      {activeTab === 'gaps' && <GapsTab
+        techs={techs} subsystems={subsystems} reqs={reqs} gapReport={gapReport}
+      />}
+      {activeTab === 'compare' && <CompareTab
+        savedArchs={savedArchs} compareIds={compareIds} setCompareIds={setCompareIds}
+        techs={techs} subsystems={subsystems}
+      />}
+      {activeTab === 'scorecard' && <ScorecardTab metrics={metrics} reqs={reqs} subsystems={subsystems} selections={selections} techs={techs} />}
+    </main>
+    {detailTechId && <TechDetailModal techId={detailTechId} techs={techs} subsystems={subsystems} reqs={reqs} onClose={()=>setDetailTechId(null)} />}
+  </div>);
+}
+
+// ============ HEADER ============
+function Header({loadStatus, archName, setArchName, onClear, onSave, onSuggest, onExport, savedArchs, onLoadArch, onDeleteArch}) {
+  const [open, setOpen] = useState(false);
+  return (<header className="app-header">
+    <h1>Mars to Table — React Trade Space Explorer</h1>
+    <span className="meta">{loadStatus}</span>
+    <input type="text" value={archName} onChange={e=>setArchName(e.target.value)} style={{width:240}} />
+    <div className="right">
+      <button onClick={()=>onSuggest('highest_trl')} title="Pick highest-TRL candidate per subsystem">Suggest: High-TRL</button>
+      <button onClick={()=>onSuggest('lowest_mass')}>Suggest: Low-Mass</button>
+      <button onClick={()=>onSuggest('lowest_power')}>Suggest: Low-Power</button>
+      <button onClick={()=>onSuggest('bioregen')}>Suggest: Bioregen</button>
+      <button onClick={onClear}>Clear</button>
+      <button className="primary" onClick={onSave}>Save arch</button>
+      <button onClick={()=>setOpen(o=>!o)}>Saved ({savedArchs.length})</button>
+      <button onClick={onExport}>Export JSON</button>
+    </div>
+    {open && <div className="panel" style={{position:'absolute',right:18,top:50,zIndex:20,maxWidth:480,maxHeight:300,overflowY:'auto'}}>
+      <h2>Saved architectures</h2>
+      {savedArchs.length === 0 ? <div className="empty">none yet</div> : savedArchs.map(a => (
+        <div key={a.id} style={{display:'flex',gap:8,alignItems:'center',padding:'4px 0',borderBottom:'1px solid var(--border)'}}>
+          <div style={{flex:1,fontSize:12}}>
+            <strong>{a.name}</strong> · {a.metrics.techCount} techs · TRL {a.metrics.trlAvg?.toFixed(1) ?? '–'} · {a.metrics.mass.toFixed(0)} kg
+          </div>
+          <button className="small" onClick={()=>{ onLoadArch(a.id); setOpen(false); }}>Load</button>
+          <button className="small" onClick={()=>onDeleteArch(a.id)}>×</button>
+        </div>
+      ))}
+    </div>}
+  </header>);
+}
+
+// ============ TAB BAR ============
+function TabBar({activeTab, setActiveTab, metrics, reqs}) {
+  const reqMet = reqs.requirements.filter(r => metrics.reqsCovered.has(r.id)).length;
+  const reqTotal = reqs.requirements.length;
+  return (<div className="tabs">
+    <div className={`tab ${activeTab==='builder'?'active':''}`} onClick={()=>setActiveTab('builder')}>
+      Architecture Builder
+    </div>
+    <div className={`tab ${activeTab==='spreadsheet'?'active':''}`} onClick={()=>setActiveTab('spreadsheet')}>
+      Spreadsheet
+    </div>
+    <div className={`tab ${activeTab==='flows'?'active':''}`} onClick={()=>setActiveTab('flows')}>
+      Flows & Integration
+    </div>
+    <div className={`tab ${activeTab==='compare'?'active':''}`} onClick={()=>setActiveTab('compare')}>
+      Compare
+    </div>
+    <div className={`tab ${activeTab==='gaps'?'active':''}`} onClick={()=>setActiveTab('gaps')}>
+      Gaps
+    </div>
+    <div className={`tab ${activeTab==='scorecard'?'active':''}`} onClick={()=>setActiveTab('scorecard')}>
+      Scorecard <span className="pill">REQ {reqMet}/{reqTotal}</span>
+    </div>
+  </div>);
+}
+
+// ============ TOTALS BAR ============
+function TotalsBar({metrics, reqs}) {
+  const adminReqs = new Set(['REQ-SYS-037','REQ-SYS-038','REQ-SYS-039']);
+  const elig = reqs.requirements.filter(r => !adminReqs.has(r.id));
+  const covered = elig.filter(r => metrics.reqsCovered.has(r.id)).length;
+  const cov = elig.length ? (100*covered/elig.length).toFixed(0) : 0;
+  return (<div className="totals-bar">
+    <div className="totals-section">
+      <div className="totals-label">SCALE</div>
+      <div className="totals-item"><span className="label">techs</span><span className="val">{metrics.techCount}</span></div>
+      <div className="totals-item"><span className="label">mass</span><span className="val">{metrics.mass.toFixed(0)} kg</span></div>
+      <div className="totals-item"><span className="label">vol</span><span className="val">{metrics.vol.toFixed(1)} m³</span></div>
+      <div className="totals-item"><span className="label">power</span><span className="val">{metrics.power.toFixed(0)} W</span></div>
+      <div className={`totals-item ${metrics.crew>CREW_BUDGET_HR?'over':''}`}><span className="label">crew</span><span className="val">{metrics.crew.toFixed(1)}/{CREW_BUDGET_HR} hr/sol</span></div>
+      <div className="totals-item"><span className="label">ESM</span><span className="val">{metrics.esm.toFixed(0)} kg-eq</span></div>
+    </div>
+    <div className="totals-section">
+      <div className="totals-label">TRL & COVERAGE</div>
+      <div className="totals-item"><span className="label">avg</span><span className="val">{metrics.trlAvg?.toFixed(1) ?? '–'}</span></div>
+      <div className="totals-item"><span className="label">weakest</span><span className={`val ${metrics.trlMin && metrics.trlMin<5?'neg':''}`}>{metrics.trlMin ?? '–'}</span></div>
+      <div className="totals-item"><span className="label">strongest</span><span className="val">{metrics.trlMax ?? '–'}</span></div>
+      <div className="totals-item"><span className="label">REQ-SYS</span><span className="val">{cov}%</span></div>
+    </div>
+    <div className="totals-section">
+      <div className="totals-label">NET BALANCES</div>
+      {KEY_FLOWS.map(k => {
+        const v = metrics.flowBalance[k.flow]; if (v == null) return null;
+        const cls = v > 0.001 ? 'pos' : (v < -0.001 ? 'neg' : '');
+        return (<div key={k.flow} className="totals-item">
+          <span className="label">{k.label}</span>
+          <span className={`val ${cls}`}>{v>=0?'+':''}{v.toFixed(2)} {k.units}</span>
+        </div>);
+      })}
+    </div>
+  </div>);
+}
+
+// ============ BUILDER TAB ============
+function BuilderTab({groups, subsystems, techs, selections, toggleTech, setDetailTechId, metrics}) {
+  const [filter, setFilter] = useState({});
+  const buckets = {};
+  if (groups.length) groups.forEach(g => buckets[g.id] = []);
+  const ungrouped = [];
+  subsystems.forEach(s => {
+    if (s.group && buckets[s.group]) buckets[s.group].push(s);
+    else ungrouped.push(s);
+  });
+  const reqs = {requirements: [], categories: {}}; // not used here
+  return (<div>
+    <div className="help">
+      Pick technologies into each subsystem. <strong>Click multiple</strong> for parallel/redundant operation.
+      The header has Suggest buttons that auto-fill an architecture in one click. Save when ready.
+    </div>
+    <TotalsBar metrics={metrics} reqs={{requirements:[]}} />
+    <div className="ss-grid">
+      {groups.map(g => buckets[g.id]?.length ? (
+        <div key={g.id} className="ss-group">
+          <div className="ss-group-header">
+            <span className="ss-group-name">{g.name}</span>
+            <span className="ss-group-meta">
+              {buckets[g.id].filter(s => (selections[s.id]||[]).length).length}/{buckets[g.id].length} filled
+            </span>
+          </div>
+          <div className="ss-group-meta" style={{marginBottom:8}}>{g.description}</div>
+          <div className="ss-grid-inner">
+            {buckets[g.id].map(s => <SubsystemCard
+              key={s.id} sub={s} techs={techs} selections={selections}
+              toggleTech={toggleTech} setDetailTechId={setDetailTechId}
+              filter={filter[s.id] || ''} setFilter={v => setFilter(f => ({...f, [s.id]: v}))}
+            />)}
+          </div>
+        </div>
+      ) : null)}
+      {ungrouped.length > 0 && <div className="ss-group">
+        <div className="ss-group-header"><span className="ss-group-name">Other</span></div>
+        <div className="ss-grid-inner">
+          {ungrouped.map(s => <SubsystemCard key={s.id} sub={s} techs={techs} selections={selections}
+            toggleTech={toggleTech} setDetailTechId={setDetailTechId}
+            filter={filter[s.id] || ''} setFilter={v => setFilter(f => ({...f, [s.id]: v}))} />)}
+        </div>
+      </div>}
+    </div>
+  </div>);
+}
+
+function SubsystemCard({sub, techs, selections, toggleTech, setDetailTechId, filter, setFilter}) {
+  const cands = candidateTechsFor(sub, techs);
+  const sel = selections[sub.id] || [];
+  const agg = aggregateSubsystem(sub, selections, techs);
+  const fLow = filter.toLowerCase();
+  const filtered = filter ? cands.filter(c => (c.name+c.short_description+(c.tags||[]).join(' ')).toLowerCase().includes(fLow)) : cands;
+  return (<div className={`ss-card ${sel.length?'has-selection':'unfilled'}`}>
+    <div className="name">{sub.name}</div>
+    <div className="desc">{sub.description}</div>
+    <div style={{fontSize:11}}>
+      {sel.length>0 && <span className="tag good">{sel.length} selected</span>}
+      {(sub.expected_outputs||[]).slice(0,4).map(f =>
+        <span key={f} className={`tag ${agg.outputs[f]?'good':'warn'}`}>↑{f}</span>)}
+      {(sub.expected_inputs||[]).slice(0,4).map(f =>
+        <span key={f} className={`tag ${agg.inputs[f]?'good':'warn'}`}>↓{f}</span>)}
+    </div>
+    {cands.length > 5 && <input type="text" className="filter" placeholder="filter…"
+      value={filter} onChange={e => setFilter(e.target.value)} />}
+    <div className="candidates">
+      {filtered.length ? filtered.map(d => {
+        const trl = qualTRL(d.trl?.value);
+        return (
+        <div key={d.id} className={`cand-row ${sel.includes(d.id)?'selected':''}`} onClick={()=>toggleTech(sub.id, d.id)}>
+          <input type="checkbox" checked={sel.includes(d.id)} readOnly />
+          <div style={{flex:1}}>
+            <div>{d.name} <span className="meta">[TRL {d.trl?.value ?? '?'} · {trl.label}]</span></div>
+            {(d.applicable_subsystems || []).length > 1 && <div style={{marginTop:2}}>
+              <span className="tag" style={{fontSize:10,background:'var(--bridge-soft)',color:'var(--bridge)'}} title={`Also fits: ${(d.applicable_subsystems||[]).filter(x=>x!==sub.id).join(', ')}`}>multi-use ({(d.applicable_subsystems||[]).length})</span>
+            </div>}
+            <div className="meta">{d.short_description}</div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:2,alignItems:'flex-end'}}>
+            {d.techport_url && <a href={d.techport_url} target="_blank" rel="noopener noreferrer"
+              onClick={e=>e.stopPropagation()} title="NASA TechPort"
+              style={{fontSize:10,padding:'1px 4px',background:'var(--accent-soft)',color:'var(--accent)',borderRadius:3,textDecoration:'none'}}>🔗 TP</a>}
+            <span className="meta" onClick={e=>{e.stopPropagation(); setDetailTechId(d.id);}}
+              style={{cursor:'pointer',textDecoration:'underline'}}>view</span>
+          </div>
+        </div>);
+      }) : <div className="empty" style={{padding:6}}>no matches</div>}
+    </div>
+    {sel.length>0 && <div className="totals">
+      mass {agg.mass.toFixed(1)} kg · vol {agg.vol.toFixed(2)} m³ · power {agg.power.toFixed(0)} W · crew {agg.crew.toFixed(2)} hr/sol
+    </div>}
+  </div>);
+}
+
+// ============ CYCLE VIEW TAB ============
+// SVG-based system flow diagram. 4 group nodes (Power+ISRU, ECLSS, Food, Crew)
+// connected by colored arrows representing flow categories. Click a flow to see
+// which specific flows it represents. Click a node to open its subsystem panel.
+
+const FLOW_CATEGORIES = {
+  energy: { color:'#d97706', label:'Energy', flows:['electric_power_dc','electric_power_ac','heat_high_grade','heat_low_grade','heat_reject_to_radiator'] },
+  water:  { color:'#2563eb', label:'Water', flows:['potable_water','irrigation_water','condensate_humidity','greywater','urine_pretreated','brine_concentrated','nutrient_solution','process_water_warm'] },
+  gas:    { color:'#0891b2', label:'Atmosphere/Gas', flows:['o2_gas','co2_gas','n2_gas','h2_gas','ch4_gas','air_habitat','humid_air_warm','vented_gas','voc_trace','ethylene_gas'] },
+  food:   { color:'#16a34a', label:'Food/Biomass', flows:['edible_biomass_leafy','edible_biomass_fruiting','edible_biomass_root','edible_biomass_grain','edible_biomass_legume','edible_biomass_microbial','edible_biomass_fungal','edible_biomass_cell_culture','meal_ready','processed_food_dry','processed_food_chilled','seeds'] },
+  waste:  { color:'#92400e', label:'Waste/Recycle', flows:['inedible_biomass','food_waste_organic','food_packaging_waste','feces_solid','urine_processed_solids','compost_finished','digester_effluent','ash_inorganic','general_trash','cleaning_solution_used'] },
+  info:   { color:'#7c3aed', label:'Info/Crew Time', flows:['monitoring_telemetry','control_setpoint','crew_time_routine','crew_time_skilled'] },
+};
+
+function categoryFor(flowId) {
+  for (const [cat, def] of Object.entries(FLOW_CATEGORIES)) if (def.flows.includes(flowId)) return cat;
+  return 'other';
+}
+
+const NODE_LAYOUT = {
+  Infrastructure: { cx:400, cy:80, w:240, h:90, fill:'#fef3c7', stroke:'#d97706', icon:'⚡' },
+  ECLSS:          { cx:130, cy:290, w:200, h:110, fill:'#dbeafe', stroke:'#2563eb', icon:'🌬' },
+  Food:           { cx:670, cy:290, w:200, h:110, fill:'#dcfce7', stroke:'#16a34a', icon:'🌱' },
+  Crew:           { cx:400, cy:490, w:240, h:90, fill:'#fce7f3', stroke:'#db2777', icon:'👥' },
+};
+
+const CYCLE_EDGES = [
+  // Infrastructure -> downstream
+  {id:'infra_eclss_pwr', from:'Infrastructure', to:'ECLSS', cat:'energy', side:'left',  label:'power'},
+  {id:'infra_eclss_isru', from:'Infrastructure', to:'ECLSS', cat:'water', side:'left2', label:'ISRU water/O2'},
+  {id:'infra_food_pwr',  from:'Infrastructure', to:'Food',  cat:'energy', side:'right', label:'power'},
+  {id:'infra_crew_pwr',  from:'Infrastructure', to:'Crew',  cat:'energy', side:'center',label:'power'},
+  // ECLSS <-> Crew
+  {id:'eclss_crew',  from:'ECLSS', to:'Crew',  cat:'gas',   side:'top',    label:'O2 + water + air'},
+  {id:'crew_eclss',  from:'Crew',  to:'ECLSS', cat:'waste', side:'bottom', label:'CO2 + urine + sweat'},
+  // ECLSS <-> Food
+  {id:'eclss_food',  from:'ECLSS', to:'Food',  cat:'water', side:'top',    label:'water + nutrients'},
+  {id:'food_eclss',  from:'Food',  to:'ECLSS', cat:'gas',   side:'bottom', label:'O2 + biomass return'},
+  // Food <-> Crew
+  {id:'food_crew',   from:'Food',  to:'Crew',  cat:'food',  side:'top',    label:'meals'},
+  {id:'crew_food',   from:'Crew',  to:'Food',  cat:'waste', side:'bottom', label:'food waste'},
+];
+
+// Compute the actual specific flows on each cycle edge from the architecture
+function flowsOnEdge(edge, subsystems, metrics, groups) {
+  // For each subsystem in the source group, look at outputs whose flow_id matches the edge's category.
+  // For each subsystem in the target group, look at inputs whose flow_id matches.
+  // The edge "carries" the intersection.
+  const sourceSubs = subsystems.filter(s => s.group === edge.from);
+  const targetSubs = subsystems.filter(s => s.group === edge.to);
+  const sourceProduces = {}; // flow_id -> rate (sum across source subs)
+  const targetConsumes = {};
+  sourceSubs.forEach(s => {
+    const a = metrics.aggBySS[s.id]; if (!a) return;
+    Object.entries(a.outputs).forEach(([f, r]) => { sourceProduces[f] = (sourceProduces[f]||0) + r; });
+  });
+  targetSubs.forEach(s => {
+    const a = metrics.aggBySS[s.id]; if (!a) return;
+    Object.entries(a.inputs).forEach(([f, r]) => { targetConsumes[f] = (targetConsumes[f]||0) + r; });
+  });
+  // Filter to flows in this edge's category that are both produced (source) and consumed (target)
+  const catFlows = new Set(FLOW_CATEGORIES[edge.cat]?.flows || []);
+  const out = [];
+  catFlows.forEach(f => {
+    if (sourceProduces[f] != null && targetConsumes[f] != null) {
+      out.push({ flow: f, produced: sourceProduces[f], consumed: targetConsumes[f] });
+    } else if (sourceProduces[f] != null) {
+      out.push({ flow: f, produced: sourceProduces[f], consumed: 0 });
+    } else if (targetConsumes[f] != null) {
+      out.push({ flow: f, produced: 0, consumed: targetConsumes[f] });
+    }
+  });
+  return out;
+}
+
+function CycleViewTab({groups, subsystems, techs, selections, toggleTech, metrics, reqs, setActiveTab}) {
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedEdge, setSelectedEdge] = useState(null);
+
+  // Compute selected-tech counts per group
+  const groupCounts = useMemo(() => {
+    const out = {};
+    groups.forEach(g => {
+      out[g.id] = subsystems.filter(s => s.group === g.id).reduce((sum, s) => sum + (selections[s.id]||[]).length, 0);
+    });
+    return out;
+  }, [groups, subsystems, selections]);
+
+  // Edge endpoint resolution
+  function edgeEndpoints(edge) {
+    const f = NODE_LAYOUT[edge.from], t = NODE_LAYOUT[edge.to];
+    if (!f || !t) return null;
+    // direction
+    let fx = f.cx, fy = f.cy + f.h/2;
+    let tx = t.cx, ty = t.cy - t.h/2;
+    // Override based on geometry
+    if (edge.from === 'Infrastructure' && edge.to === 'ECLSS') { fx = f.cx - 80; fy = f.cy + f.h/2; tx = t.cx + 30; ty = t.cy - t.h/2; }
+    if (edge.from === 'Infrastructure' && edge.to === 'Food')  { fx = f.cx + 80; fy = f.cy + f.h/2; tx = t.cx - 30; ty = t.cy - t.h/2; }
+    if (edge.from === 'Infrastructure' && edge.to === 'Crew')  { fx = f.cx;      fy = f.cy + f.h/2; tx = t.cx;      ty = t.cy - t.h/2; }
+    if (edge.from === 'ECLSS' && edge.to === 'Crew') { fx = f.cx + f.w/2 - 20; fy = f.cy + f.h/2; tx = t.cx - 80; ty = t.cy - t.h/2; }
+    if (edge.from === 'Crew' && edge.to === 'ECLSS') { fx = t.cx - 70; fy = NODE_LAYOUT.Crew.cy - NODE_LAYOUT.Crew.h/2; tx = f.cx + f.w/2 - 30; ty = NODE_LAYOUT.ECLSS.cy + NODE_LAYOUT.ECLSS.h/2; }
+    if (edge.from === 'Food' && edge.to === 'Crew')  { fx = f.cx - f.w/2 + 20; fy = f.cy + f.h/2; tx = t.cx + 80; ty = t.cy - t.h/2; }
+    if (edge.from === 'Crew' && edge.to === 'Food')  { fx = NODE_LAYOUT.Crew.cx + 70; fy = NODE_LAYOUT.Crew.cy - NODE_LAYOUT.Crew.h/2; tx = NODE_LAYOUT.Food.cx - NODE_LAYOUT.Food.w/2 + 30; ty = NODE_LAYOUT.Food.cy + NODE_LAYOUT.Food.h/2; }
+    if (edge.from === 'ECLSS' && edge.to === 'Food') { fx = f.cx + f.w/2; fy = f.cy - 20; tx = t.cx - t.w/2; ty = t.cy - 20; }
+    if (edge.from === 'Food' && edge.to === 'ECLSS') { fx = t.cx + f.w/2; fy = t.cy + 20; tx = NODE_LAYOUT.ECLSS.cx + NODE_LAYOUT.ECLSS.w/2; ty = NODE_LAYOUT.ECLSS.cy + 20; }
+    // Offset second arrows on same node-pair so they don't overlap
+    if (edge.id === 'infra_eclss_isru') { fx -= 30; tx -= 20; }
+    return {fx, fy, tx, ty};
+  }
+  function bezierPath(fx, fy, tx, ty) {
+    const dx = tx - fx, dy = ty - fy;
+    const c1x = fx + dx*0.2, c1y = fy + dy*0.5;
+    const c2x = fx + dx*0.8, c2y = ty - dy*0.5;
+    return `M ${fx} ${fy} C ${c1x} ${c1y} ${c2x} ${c2y} ${tx} ${ty}`;
+  }
+
+  return (<div>
+    <div className="help">
+      <strong>System cycle view.</strong> Boxes are major subsystem groups. Arrows are flow categories
+      (gold=energy, blue=water, cyan=gas, green=food, brown=waste). <strong>Click an arrow</strong> to see
+      what specific flows it carries (and which selected techs produce/consume each).
+      <strong> Click a box</strong> to open its subsystem cards and pick techs.
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:12}}>
+      {/* SVG diagram */}
+      <div className="panel" style={{padding:0,overflow:'hidden'}}>
+        <svg viewBox="0 0 800 580" style={{width:'100%',height:'auto',display:'block',background:'#fafaf7'}}>
+          <defs>
+            {Object.entries(FLOW_CATEGORIES).map(([cat, d]) => (
+              <marker key={cat} id={`arrow_${cat}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill={d.color} />
+              </marker>
+            ))}
+          </defs>
+          {/* Edges first so nodes draw on top */}
+          {CYCLE_EDGES.map(e => {
+            const ep = edgeEndpoints(e); if (!ep) return null;
+            const cat = FLOW_CATEGORIES[e.cat];
+            const sel = selectedEdge === e.id;
+            return (<g key={e.id} style={{cursor:'pointer'}} onClick={()=>setSelectedEdge(sel?null:e.id)}>
+              <path d={bezierPath(ep.fx, ep.fy, ep.tx, ep.ty)}
+                stroke={cat.color} strokeWidth={sel?6:3.5} fill="none"
+                opacity={sel?1:0.75} markerEnd={`url(#arrow_${e.cat})`} />
+              <text x={(ep.fx+ep.tx)/2} y={(ep.fy+ep.ty)/2 - 6} fill={cat.color}
+                textAnchor="middle" fontSize="10" fontWeight={sel?'700':'400'}
+                style={{pointerEvents:'none'}}>{e.label}</text>
+            </g>);
+          })}
+          {/* Group nodes */}
+          {Object.entries(NODE_LAYOUT).map(([id, n]) => {
+            const grp = groups.find(g => g.id === id);
+            const subs = subsystems.filter(s => s.group === id);
+            const filled = subs.filter(s => (selections[s.id]||[]).length).length;
+            const sel = selectedNode === id;
+            return (<g key={id} style={{cursor:'pointer'}} onClick={()=>setSelectedNode(sel?null:id)}>
+              <rect x={n.cx-n.w/2} y={n.cy-n.h/2} width={n.w} height={n.h} rx={10}
+                fill={n.fill} stroke={n.stroke} strokeWidth={sel?4:2} />
+              <text x={n.cx} y={n.cy-12} textAnchor="middle" fontSize="14" fontWeight="700" fill={n.stroke}>
+                {n.icon} {grp?.name?.split('—')[0]?.trim() || id}
+              </text>
+              <text x={n.cx} y={n.cy+8} textAnchor="middle" fontSize="11" fill="#444">
+                {subs.length} subsystems · {groupCounts[id]||0} techs selected
+              </text>
+              <text x={n.cx} y={n.cy+24} textAnchor="middle" fontSize="10" fill="#888">
+                {filled}/{subs.length} subsystems filled
+              </text>
+            </g>);
+          })}
+          {/* Legend */}
+          <g transform="translate(20, 540)">
+            {Object.entries(FLOW_CATEGORIES).map(([cat, d], i) => (
+              <g key={cat} transform={`translate(${i*120}, 0)`}>
+                <line x1="0" y1="6" x2="20" y2="6" stroke={d.color} strokeWidth="3" />
+                <text x="24" y="10" fontSize="10" fill="#555">{d.label}</text>
+              </g>
+            ))}
+          </g>
+        </svg>
+      </div>
+      {/* Side panel */}
+      <div className="panel" style={{maxHeight:'600px',overflowY:'auto'}}>
+        {!selectedNode && !selectedEdge && (
+          <div className="empty">Click a box or arrow on the cycle to drill in.</div>
+        )}
+        {selectedEdge && (() => {
+          const e = CYCLE_EDGES.find(x => x.id === selectedEdge); if (!e) return null;
+          const cat = FLOW_CATEGORIES[e.cat];
+          const flows = flowsOnEdge(e, subsystems, metrics, groups);
+          return (<div>
+            <h2>Flow: {e.from} → {e.to}</h2>
+            <div style={{padding:'4px 8px',background:cat.color,color:'#fff',borderRadius:4,display:'inline-block',marginBottom:10}}>{cat.label}</div>
+            <p style={{fontSize:13,color:'var(--muted)'}}>{e.label}</p>
+            <h4 style={{fontSize:12,textTransform:'uppercase',letterSpacing:'0.05em',color:'var(--muted)',marginTop:14}}>Specific flows</h4>
+            {flows.length === 0 ? <div className="empty">No selected techs produce or consume flows in this category between these subsystems yet.</div>
+              : flows.map(f => (
+                <div key={f.flow} style={{padding:'6px 8px',borderBottom:'1px solid var(--border)',fontSize:12}}>
+                  <code>{f.flow}</code>
+                  <div className="meta" style={{color:'var(--muted)',fontSize:11,marginTop:2}}>
+                    produced: <strong>{f.produced.toFixed(2)}</strong> · consumed: <strong>{f.consumed.toFixed(2)}</strong>
+                    {' '} <span className={`tag ${f.produced > f.consumed ? 'warn' : f.produced < f.consumed ? 'gap' : 'good'}`}>
+                      net {(f.produced-f.consumed).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            <button style={{marginTop:10}} onClick={()=>setSelectedEdge(null)}>Close</button>
+          </div>);
+        })()}
+        {selectedNode && (() => {
+          const grp = groups.find(g => g.id === selectedNode);
+          const subs = subsystems.filter(s => s.group === selectedNode);
+          return (<div>
+            <h2>{grp?.name || selectedNode}</h2>
+            <p style={{fontSize:12,color:'var(--muted)'}}>{grp?.description}</p>
+            {subs.map(s => {
+              const cands = candidateTechsFor(s, techs);
+              const sel = selections[s.id] || [];
+              return (<div key={s.id} style={{borderTop:'1px solid var(--border)',padding:'8px 0'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+                  <strong style={{fontSize:13}}>{s.name}</strong>
+                  <span className="meta" style={{fontSize:11,color:'var(--muted)'}}>{sel.length} selected · {cands.length} candidates</span>
+                </div>
+                <div style={{maxHeight:140,overflowY:'auto',marginTop:4,fontSize:12}}>
+                  {cands.map(d => {
+                    const isSel = sel.includes(d.id);
+                    const trl = qualTRL(d.trl?.value);
+                    const pwr = qualPower(d.power_w?.nominal);
+                    return (<div key={d.id} onClick={()=>toggleTech(s.id, d.id)}
+                      style={{padding:'3px 4px',cursor:'pointer',display:'flex',gap:4,alignItems:'center',
+                              background:isSel?'var(--accent-soft)':'',borderRadius:3,fontWeight:isSel?600:400}}>
+                      <input type="checkbox" checked={isSel} readOnly />
+                      <span style={{flex:1}}>{d.name}</span>
+                      <span className={`tag ${trl.cls}`} style={{fontSize:10}}>{trl.label}</span>
+                      <span className={`tag ${pwr.cls}`} style={{fontSize:10}}>pwr {pwr.label}</span>
+                    </div>);
+                  })}
+                </div>
+              </div>);
+            })}
+            <button style={{marginTop:10}} onClick={()=>setSelectedNode(null)}>Close</button>
+            <button style={{marginLeft:6}} className="primary" onClick={()=>setActiveTab('builder')}>Open Builder for full detail</button>
+          </div>);
+        })()}
+      </div>
+    </div>
+    <TotalsBar metrics={metrics} reqs={reqs} />
+  </div>);
+}
+
+// ============ SPREADSHEET TAB ============
+function SpreadsheetTab({techs, setDetailTechId}) {
+  const [sortKey, setSortKey] = useState('id');
+  const [sortDir, setSortDir] = useState('asc');
+  const [search, setSearch] = useState('');
+  const [filterCat, setFilterCat] = useState('');
+  const [filterTrl, setFilterTrl] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(100);
+  const cats = useMemo(() => [...new Set(techs.map(t => t.category))].sort(), [techs]);
+  // Per-category counts so the landing screen can show clickable buckets
+  const catCounts = useMemo(() => {
+    const m = {};
+    for (const t of techs) m[t.category] = (m[t.category]||0) + 1;
+    return m;
+  }, [techs]);
+  // Has the user actively chosen a filter? If not, we render the empty landing screen.
+  const hasFilter = search.trim().length > 0 || !!filterCat || filterTrl > 0;
+  // Reset to first page whenever the underlying filter/sort changes
+  useEffect(() => { setPage(0); }, [search, filterCat, filterTrl, sortKey, sortDir, pageSize]);
+  const sorted = useMemo(() => {
+    if (!hasFilter) return [];  // skip work entirely on first paint
+    let rows = techs;
+    if (search) rows = rows.filter(t =>
+      [t.id,t.name,t.short_description,t.function_role,...(t.tags||[]),...(t.aliases||[])]
+        .filter(Boolean).join(' ').toLowerCase().includes(search.toLowerCase()));
+    if (filterCat) rows = rows.filter(t => t.category === filterCat);
+    if (filterTrl) rows = rows.filter(t => (t.trl?.value||0) >= filterTrl);
+    const get = t => {
+      switch(sortKey) {
+        case 'trl': return t.trl?.value || 0;
+        case 'mass': return t.mass_kg?.value || 0;
+        case 'power': return t.power_w?.nominal || 0;
+        case 'crew': return t.crew_time_hr_per_sol?.nominal || 0;
+        case 'category': return t.category || '';
+        case 'name': return t.name || '';
+        default: return t.id || '';
+      }
+    };
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...rows].sort((a,b) => { const va=get(a), vb=get(b); return va<vb?-dir:va>vb?dir:0; });
+  }, [techs, hasFilter, search, filterCat, filterTrl, sortKey, sortDir]);
+  const sort = k => { if (sortKey===k) setSortDir(d=>d==='asc'?'desc':'asc'); else { setSortKey(k); setSortDir('asc'); } };
+  const exportCSV = () => {
+    const headers = ['id','name','category','subsystem','trl','mass_kg','volume_m3','power_w','crew_hr','satisfies','tags'];
+    const rows = [headers, ...sorted.map(t => [
+      t.id, t.name, t.category, t.subsystem, t.trl?.value, t.mass_kg?.value, t.volume_m3?.value,
+      t.power_w?.nominal, t.crew_time_hr_per_sol?.nominal,
+      (t.satisfies_requirements||[]).join('|'), (t.tags||[]).join('|')
+    ])];
+    downloadCSV(rows, 'technologies.csv');
+  };
+  return (<div>
+    <div className="panel">
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:10}}>
+        <input type="text" placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:200}} />
+        <select value={filterCat} onChange={e=>setFilterCat(e.target.value)}>
+          <option value="">All categories</option>
+          {cats.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filterTrl} onChange={e=>setFilterTrl(parseInt(e.target.value))}>
+          <option value="0">All TRL</option><option value="9">TRL 9</option>
+          <option value="7">TRL 7+</option><option value="5">TRL 5+</option><option value="3">TRL 3+</option>
+        </select>
+        <span className="meta" style={{color:'var(--muted)',fontSize:12}}>{sorted.length}/{techs.length} rows</span>
+        <select value={pageSize} onChange={e=>setPageSize(parseInt(e.target.value))} title="Rows per page">
+          <option value="50">50/page</option>
+          <option value="100">100/page</option>
+          <option value="250">250/page</option>
+          <option value="500">500/page</option>
+          <option value="999999">All ({sorted.length})</option>
+        </select>
+        <button onClick={exportCSV}>Export CSV</button>
+      </div>
+      {!hasFilter ? (
+        <div style={{padding:'24px 12px',textAlign:'center'}}>
+          <div style={{fontSize:14,color:'var(--muted)',marginBottom:16}}>
+            <strong>{techs.length.toLocaleString()}</strong> technologies loaded. Pick a category, set a TRL floor, or type a search to view rows.
+          </div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:8,justifyContent:'center',maxWidth:800,margin:'0 auto'}}>
+            {cats.map(c => (
+              <button key={c} onClick={()=>setFilterCat(c)}
+                      style={{padding:'6px 12px',fontSize:13,background:'var(--accent-soft)',color:'var(--accent)',border:'1px solid var(--accent)',borderRadius:4,cursor:'pointer'}}>
+                {c} <span style={{opacity:0.7}}>({catCounts[c]})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (<>
+      {(() => {
+        const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+        const safePage = Math.min(page, totalPages - 1);
+        const start = safePage * pageSize;
+        const end = Math.min(start + pageSize, sorted.length);
+        return (
+          <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8,fontSize:12,color:'var(--muted)'}}>
+            <button onClick={()=>{ setSearch(''); setFilterCat(''); setFilterTrl(0); }}
+                    style={{background:'var(--bg)',border:'1px solid var(--border)',padding:'2px 8px',cursor:'pointer'}}>← Clear filters</button>
+            <button onClick={()=>setPage(0)} disabled={safePage===0}>« First</button>
+            <button onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={safePage===0}>‹ Prev</button>
+            <span>Page {safePage+1} / {totalPages} — rows {sorted.length===0 ? 0 : start+1}–{end} of {sorted.length}</span>
+            <button onClick={()=>setPage(p=>Math.min(totalPages-1,p+1))} disabled={safePage>=totalPages-1}>Next ›</button>
+            <button onClick={()=>setPage(totalPages-1)} disabled={safePage>=totalPages-1}>Last »</button>
+            <span style={{marginLeft:8}}>Jump to:</span>
+            <input type="number" min="1" max={totalPages} value={safePage+1}
+                   onChange={e=>{ const n=parseInt(e.target.value)-1; if(!isNaN(n)) setPage(Math.max(0,Math.min(totalPages-1,n))); }}
+                   style={{width:60}} />
+          </div>
+        );
+      })()}
+      <div style={{maxHeight:'70vh',overflow:'auto'}}>
+        <table>
+          <thead><tr>
+            <th onClick={()=>sort('id')}>ID {sortKey==='id'?(sortDir==='asc'?'▲':'▼'):''}</th>
+            <th onClick={()=>sort('name')}>Name {sortKey==='name'?(sortDir==='asc'?'▲':'▼'):''}</th>
+            <th onClick={()=>sort('category')}>Category {sortKey==='category'?(sortDir==='asc'?'▲':'▼'):''}</th>
+            <th onClick={()=>sort('trl')}>TRL {sortKey==='trl'?(sortDir==='asc'?'▲':'▼'):''}</th>
+            <th>Satisfies</th>
+            <th>Tags</th>
+          </tr></thead>
+          <tbody>
+            {sorted.slice(page*pageSize, page*pageSize+pageSize).map(t => (<tr key={t.id} onClick={()=>setDetailTechId(t.id)} style={{cursor:'pointer'}}>
+              <td>
+                <code>{t.id}</code>
+                {t.techport_url && <a href={t.techport_url} target="_blank" rel="noopener noreferrer"
+                  onClick={e=>e.stopPropagation()} title="Open NASA TechPort page"
+                  style={{marginLeft:4,fontSize:10,padding:'1px 4px',background:'var(--accent-soft)',color:'var(--accent)',borderRadius:3,textDecoration:'none'}}>🔗 TP</a>}
+              </td>
+              <td><strong>{t.name}</strong><br/><span className="meta" style={{fontSize:11,color:'var(--muted)'}}>{t.short_description}</span></td>
+              <td>{t.category}</td>
+              <td>{t.trl?.value ?? '?'}</td>
+              <td>{(t.satisfies_requirements||[]).map(r => <span key={r} className="tag req">{r}</span>)}</td>
+              <td>{(t.tags||[]).map(tg => <span key={tg} className="tag">{tg}</span>)}</td>
+            </tr>))}
+          </tbody>
+        </table>
+      </div>
+      </>)}
+    </div>
+  </div>);
+}
+
+// ============ FLOWS TAB ============
+function FlowsTab({subsystems, metrics}) {
+  const flowsByP = {}, flowsByC = {};
+  Object.entries(metrics.aggBySS).forEach(([sid, a]) => {
+    Object.entries(a.outputs).forEach(([f,r]) => { (flowsByP[f] = flowsByP[f]||[]).push({sid,r}); });
+    Object.entries(a.inputs).forEach(([f,r]) => { (flowsByC[f] = flowsByC[f]||[]).push({sid,r}); });
+  });
+  const allFlows = new Set([...Object.keys(flowsByP), ...Object.keys(flowsByC)]);
+  const rows = [...allFlows].sort().map(f => {
+    const p = flowsByP[f] || [], c = flowsByC[f] || [];
+    const pT = p.reduce((a,x)=>a+x.r, 0), cT = c.reduce((a,x)=>a+x.r, 0);
+    const net = pT - cT;
+    let cls, status;
+    if (!p.length) { cls='orphan'; status='no producer'; }
+    else if (!c.length) { cls='orphan'; status='no consumer'; }
+    else if (Math.abs(net) < 0.001) { cls='balanced'; status='balanced'; }
+    else if (net < 0) { cls='deficit'; status='deficit'; }
+    else { cls='surplus'; status='surplus'; }
+    return {flow:f, p, c, net, cls, status};
+  });
+  const bridges = rows.filter(r => r.cls === 'orphan' || r.cls === 'deficit');
+  return (<div>
+    <div className="help">
+      Flow-by-flow integration map. Each row is one interface flow your architecture touches.
+      <strong style={{color:'var(--good)'}}> green</strong>: balanced producer/consumer.
+      <strong style={{color:'var(--gap)'}}> red</strong>: deficit — need more producer.
+      <strong style={{color:'var(--warn)'}}> yellow</strong>: surplus — need consumer or vent.
+      <strong style={{color:'var(--bridge)'}}> blue</strong>: orphan — bridge slot for innovation.
+    </div>
+    <TotalsBar metrics={metrics} reqs={{requirements:[]}} />
+    <div className="panel">
+      <h2>Integration matrix <span className="tag">{rows.length} flows</span></h2>
+      <table className="integ-table">
+        <thead><tr><th>Flow</th><th>Producers (subsystem · rate)</th><th>Consumers (subsystem · rate)</th><th>Net</th><th>Status</th></tr></thead>
+        <tbody>
+          {rows.map(r => (<tr key={r.flow} className={r.cls}>
+            <td><code>{r.flow}</code></td>
+            <td>{r.p.map(x => <div key={x.sid}>{x.sid} · <span className="meta">{x.r.toFixed(2)}</span></div>) || '—'}</td>
+            <td>{r.c.map(x => <div key={x.sid}>{x.sid} · <span className="meta">{x.r.toFixed(2)}</span></div>) || '—'}</td>
+            <td style={{fontFamily:'monospace'}}>{r.net>=0?'+':''}{r.net.toFixed(2)}</td>
+            <td><span className={`tag ${r.cls==='balanced'?'good':r.cls==='deficit'?'gap':r.cls==='surplus'?'warn':'bridge'}`}>{r.status}</span></td>
+          </tr>))}
+        </tbody>
+      </table>
+    </div>
+    <div className="panel">
+      <h2>Bridge slots — innovation opportunities <span className="tag bridge">{bridges.length}</span></h2>
+      {bridges.length === 0 ? <div className="empty">no bridge slots — your architecture closes cleanly</div> : bridges.map(b => (
+        <div key={b.flow} style={{padding:'8px 12px',borderLeft:`4px solid var(--${b.cls==='deficit'?'gap':'bridge'})`,background:'var(--bridge-soft)',borderRadius:4,marginBottom:6}}>
+          <strong>{b.status}</strong> for <code>{b.flow}</code> ·{' '}
+          {b.cls === 'deficit' ? `current producers cover ${b.p.reduce((a,x)=>a+x.r,0).toFixed(2)}, demand is ${b.c.reduce((a,x)=>a+x.r,0).toFixed(2)}` :
+           b.p.length ? `produced by ${b.p.map(x=>x.sid).join(', ')}, no consumer` :
+           `consumed by ${b.c.map(x=>x.sid).join(', ')}, no producer`}
+        </div>
+      ))}
+    </div>
+  </div>);
+}
+
+// ============ COMPARE TAB ============
+function CompareTab({savedArchs, compareIds, setCompareIds, techs, subsystems}) {
+  const toggle = id => setCompareIds(cs => cs.includes(id) ? cs.filter(x=>x!==id) : (cs.length>=4?cs:[...cs,id]));
+  const archs = compareIds.map(id => savedArchs.find(a => a.id === id)).filter(Boolean);
+  return (<div>
+    <div className="help">
+      Pick up to 4 saved architectures to compare side-by-side. Save architectures from the Builder tab first.
+    </div>
+    <div className="panel">
+      <h2>Saved architectures ({savedArchs.length})</h2>
+      {savedArchs.length === 0 ? <div className="empty">none yet — go to Builder, compose, then click Save arch</div> : savedArchs.map(a => (
+        <div key={a.id} style={{display:'flex',gap:8,alignItems:'center',padding:'4px 0',borderBottom:'1px solid var(--border)'}}>
+          <input type="checkbox" checked={compareIds.includes(a.id)} onChange={()=>toggle(a.id)} />
+          <div style={{flex:1,fontSize:13}}>
+            <strong>{a.name}</strong>
+            <span className="meta" style={{marginLeft:8,color:'var(--muted)',fontSize:11}}>
+              {a.metrics.techCount} techs · TRL avg {a.metrics.trlAvg?.toFixed(1) ?? '–'} · {a.metrics.mass.toFixed(0)} kg · {a.metrics.power.toFixed(0)} W · ESM {a.metrics.esm.toFixed(0)}
+            </span>
+          </div>
+          <span className="meta" style={{color:'var(--muted)',fontSize:11}}>{new Date(a.createdAt).toLocaleString()}</span>
+        </div>
+      ))}
+    </div>
+    {archs.length > 0 && <div className="panel">
+      <h2>Side-by-side comparison</h2>
+      <div className="compare-grid">
+        {archs.map(a => (<div key={a.id} className="arch-card">
+          <h3>{a.name}</h3>
+          <div className="stat"><span>Techs</span><span className="v">{a.metrics.techCount}</span></div>
+          <div className="stat"><span>Mass</span><span className="v">{a.metrics.mass.toFixed(0)} kg</span></div>
+          <div className="stat"><span>Volume</span><span className="v">{a.metrics.vol.toFixed(1)} m³</span></div>
+          <div className="stat"><span>Power</span><span className="v">{a.metrics.power.toFixed(0)} W</span></div>
+          <div className="stat"><span>Crew time</span><span className="v">{a.metrics.crew.toFixed(1)} hr/sol</span></div>
+          <div className="stat"><span>ESM</span><span className="v">{a.metrics.esm.toFixed(0)} kg-eq</span></div>
+          <div className="stat"><span>TRL avg/min</span><span className="v">{a.metrics.trlAvg?.toFixed(1) ?? '–'} / {a.metrics.trlMin ?? '–'}</span></div>
+          <div className="stat"><span>REQ-SYS satisfied</span><span className="v">{a.metrics.reqsCovered?.length ?? 0}/60</span></div>
+        </div>))}
+      </div>
+    </div>}
+  </div>);
+}
+
+// ============ SCORECARD TAB ============
+function ScorecardTab({metrics, reqs, subsystems, selections, techs}) {
+  return (<div>
+    <div className="help">
+      Overall system scorecard for the current architecture in the Builder.
+      <strong>Energy waste</strong> = power dissipated as heat (assumed = total power − useful work; for v0 assumes 100% becomes heat reject).
+      <strong>Man-hours</strong> = crew time per sol summed across all selected techs.
+    </div>
+    <TotalsBar metrics={metrics} reqs={reqs} />
+    <div className="panel">
+      <h2>System totals</h2>
+      <table>
+        <tbody>
+          <tr><td>Total techs selected</td><td><strong>{metrics.techCount}</strong></td></tr>
+          <tr><td>Mass</td><td><strong>{metrics.mass.toFixed(0)} kg</strong></td></tr>
+          <tr><td>Volume</td><td><strong>{metrics.vol.toFixed(1)} m³</strong></td></tr>
+          <tr><td>Power consumed (continuous)</td><td><strong>{metrics.power.toFixed(0)} W</strong></td></tr>
+          <tr><td>Energy waste (heat reject load, v0 assumption)</td><td><strong>{metrics.power.toFixed(0)} W</strong></td></tr>
+          <tr><td>Man-hours per sol</td><td><strong>{metrics.crew.toFixed(2)} hr/sol</strong> {metrics.crew>CREW_BUDGET_HR && <span className="tag gap">over {CREW_BUDGET_HR} hr budget!</span>}</td></tr>
+          <tr><td>Equivalent System Mass (ESM)</td><td><strong>{metrics.esm.toFixed(0)} kg-eq</strong> <span className="meta" style={{color:'var(--muted)',fontSize:11}}>(BVAD Fv={ESM_FACTORS.Fv}, Fp={ESM_FACTORS.Fp}, Fct={ESM_FACTORS.Fct})</span></td></tr>
+          <tr><td>TRL — avg / weakest / strongest</td><td><strong>{metrics.trlAvg?.toFixed(1) ?? '–'} / {metrics.trlMin ?? '–'} / {metrics.trlMax ?? '–'}</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div className="panel">
+      <h2>REQ-SYS coverage by category</h2>
+      <p style={{color:'var(--muted)',fontSize:12,margin:'0 0 10px'}}>
+        ✓ green = at least one selected tech satisfies the requirement.
+        ✗ red = no selected tech satisfies it AND it's a tech-satisfiable requirement.
+        ◯ gray = administrative / documentation requirement (won't be satisfied by a tech).
+      </p>
+      <div className="reqs-grid">
+        {Object.entries(reqs.categories || {}).map(([cat, reqIds]) => (
+          <div key={cat} className="req-cat">
+            <h4>{cat} ({reqIds.length})</h4>
+            {reqIds.map(rid => {
+              const r = reqs.requirements.find(x => x.id === rid); if (!r) return null;
+              const met = metrics.reqsCovered.has(rid);
+              const isAdmin = !r.can_be_satisfied_by_tech;
+              const cls = isAdmin ? 'na' : (met ? 'met' : 'unmet');
+              const icon = isAdmin ? '◯' : (met ? '✓' : '✗');
+              return (<div key={rid} className="req-row" title={r.text}>
+                <span className={`req-icon ${cls}`}>{icon}</span>
+                <code>{rid}</code>
+                <span style={{color:'var(--muted)'}}>{r.short}</span>
+              </div>);
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>);
+}
+
+// ============ GAPS TAB ============
+function GapsTab({techs, subsystems, reqs, gapReport}) {
+  // === LIVE COMPUTED GAPS (no LLM, updates instantly when DB changes) ===
+
+  // 1. REQ-SYS coverage across the database
+  const reqCoverage = useMemo(() => {
+    const cov = {};
+    (reqs.requirements || []).forEach(r => { cov[r.id] = []; });
+    techs.forEach(t => {
+      (t.satisfies_requirements || []).forEach(rid => {
+        if (cov[rid] != null) cov[rid].push(t.id);
+      });
+    });
+    return cov;
+  }, [techs, reqs]);
+
+  // 2. Subsystem candidate density
+  const subsysCandidates = useMemo(() => {
+    const out = {};
+    subsystems.forEach(s => {
+      out[s.id] = techs.filter(t => (t.applicable_subsystems || []).includes(s.id));
+    });
+    return out;
+  }, [techs, subsystems]);
+
+  // 3. Flow orphans across the entire database
+  const flowOrphans = useMemo(() => {
+    const producers = {}, consumers = {};
+    techs.forEach(t => {
+      (t.outputs || []).forEach(o => { (producers[o.flow_id] = producers[o.flow_id] || []).push(t.id); });
+      (t.inputs || []).forEach(i => { (consumers[i.flow_id] = consumers[i.flow_id] || []).push(t.id); });
+    });
+    const flows = new Set([...Object.keys(producers), ...Object.keys(consumers)]);
+    const noProducer = [], noConsumer = [];
+    flows.forEach(f => {
+      if (!producers[f] && consumers[f]) noProducer.push({flow:f, consumers: consumers[f]});
+      else if (!consumers[f] && producers[f]) noConsumer.push({flow:f, producers: producers[f]});
+    });
+    return {noProducer, noConsumer};
+  }, [techs]);
+
+  // 4. TRL distribution per subsystem (find subsystems with no high-TRL options)
+  const trlBySubsys = useMemo(() => {
+    const out = {};
+    subsystems.forEach(s => {
+      const cands = subsysCandidates[s.id] || [];
+      const trls = cands.map(t => t.trl?.value).filter(v => typeof v === 'number');
+      out[s.id] = {
+        n: cands.length,
+        max: trls.length ? Math.max(...trls) : null,
+        avg: trls.length ? (trls.reduce((a,b)=>a+b,0)/trls.length) : null,
+        nFlightReady: trls.filter(v => v >= 7).length,
+        nDevelopment: trls.filter(v => v >= 4 && v < 7).length,
+        nConcept: trls.filter(v => v < 4).length,
+      };
+    });
+    return out;
+  }, [subsystems, subsysCandidates]);
+
+  const adminReqs = new Set(['REQ-SYS-037','REQ-SYS-038','REQ-SYS-039']);
+  const techSatReqs = (reqs.requirements || []).filter(r => r.can_be_satisfied_by_tech !== false && !adminReqs.has(r.id));
+  const uncoveredReqs = techSatReqs.filter(r => (reqCoverage[r.id] || []).length === 0);
+  const sparseSubsystems = subsystems.filter(s => (subsysCandidates[s.id] || []).length < 2);
+  const noHighTrlSubsys  = subsystems.filter(s => (trlBySubsys[s.id]?.nFlightReady || 0) === 0 && (subsysCandidates[s.id] || []).length > 0);
+
+  return (<div>
+    <div className="help">
+      <strong>This page is live</strong> — every count below recomputes from your loaded database in real time.
+      Add a new tech, change a tag, or update REQ-SYS satisfaction in <code>data/technologies.jsonl</code> and reload to see the gap counts shift.
+      The strategic narrative at the bottom is the AI gap report from <code>data/pipeline/5_synthesis/gap_report.md</code> —
+      regenerate it via <code>python 04_synth.py</code> when you want fresh strategic analysis (~$0.12 with Haiku, ~$1.46 with Sonnet).
+    </div>
+
+    {/* TOP-LINE NUMBERS */}
+    <div className="totals-bar">
+      <div className="totals-section">
+        <div className="totals-label">DB STATS</div>
+        <div className="totals-item"><span className="label">techs</span><span className="val">{techs.length}</span></div>
+        <div className="totals-item"><span className="label">subsystems</span><span className="val">{subsystems.length}</span></div>
+        <div className="totals-item"><span className="label">REQ-SYS tech-satisfiable</span><span className="val">{techSatReqs.length}</span></div>
+      </div>
+      <div className="totals-section">
+        <div className="totals-label">GAP COUNTS</div>
+        <div className="totals-item"><span className="label">uncovered REQ-SYS</span><span className="val neg">{uncoveredReqs.length}</span></div>
+        <div className="totals-item"><span className="label">sparse subsystems (&lt;2 candidates)</span><span className="val neg">{sparseSubsystems.length}</span></div>
+        <div className="totals-item"><span className="label">subsystems with no flight-ready</span><span className="val neg">{noHighTrlSubsys.length}</span></div>
+        <div className="totals-item"><span className="label">flow orphans (no producer)</span><span className="val neg">{flowOrphans.noProducer.length}</span></div>
+        <div className="totals-item"><span className="label">flow orphans (no consumer)</span><span className="val neg">{flowOrphans.noConsumer.length}</span></div>
+      </div>
+    </div>
+
+    {/* FUNCTION GAPS */}
+    <div className="panel">
+      <h2>Function gaps — REQ-SYS with zero candidate techs <span className="pill">{uncoveredReqs.length}</span></h2>
+      {uncoveredReqs.length === 0 ? <div className="empty">All tech-satisfiable REQ-SYS have at least one candidate.</div> :
+       <div style={{maxHeight:300,overflowY:'auto'}}>
+         {uncoveredReqs.map(r => (
+           <div key={r.id} style={{padding:'4px 8px',borderBottom:'1px solid var(--border)',fontSize:12}}>
+             <code className="tag req">{r.id}</code>
+             <span style={{color:'var(--muted)',marginLeft:6}}>{r.short}</span>
+           </div>
+         ))}
+       </div>}
+    </div>
+
+    {/* SUBSYSTEM DENSITY */}
+    <div className="panel">
+      <h2>Subsystem candidate density</h2>
+      <table>
+        <thead><tr>
+          <th>Subsystem</th><th># candidates</th><th>avg TRL</th><th>max TRL</th>
+          <th>flight-ready (TRL≥7)</th><th>development (4–6)</th><th>concept (1–3)</th>
+        </tr></thead>
+        <tbody>
+          {subsystems.map(s => {
+            const t = trlBySubsys[s.id] || {n:0};
+            const sparse = t.n < 2, noFlight = t.nFlightReady === 0 && t.n > 0;
+            return (<tr key={s.id} style={{background: sparse ? 'var(--gap-soft)' : noFlight ? 'var(--warn-soft)' : ''}}>
+              <td><strong>{s.name}</strong> <code style={{fontSize:10}}>{s.id}</code></td>
+              <td>{t.n}{sparse ? <span className="tag gap" style={{marginLeft:4,fontSize:10}}>sparse</span> : null}</td>
+              <td>{t.avg !== null ? t.avg.toFixed(1) : '–'}</td>
+              <td>{t.max !== null ? t.max : '–'}</td>
+              <td>{t.nFlightReady || 0}{noFlight ? <span className="tag warn" style={{marginLeft:4,fontSize:10}}>none</span> : null}</td>
+              <td>{t.nDevelopment || 0}</td>
+              <td>{t.nConcept || 0}</td>
+            </tr>);
+          })}
+        </tbody>
+      </table>
+    </div>
+
+    {/* FLOW ORPHANS */}
+    <div className="panel">
+      <h2>Flow orphans across the database</h2>
+      <p style={{color:'var(--muted)',fontSize:12}}>Bridge-tech opportunities. A flow with no producer means consumers depend on something the database doesn't have — innovation slot. A flow with no consumer means a producer's output goes nowhere — vent, store, or find a use.</p>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        <div>
+          <h3 style={{fontSize:13}}>No producer ({flowOrphans.noProducer.length})</h3>
+          {flowOrphans.noProducer.length === 0 ? <div className="empty">none</div> :
+            <div style={{maxHeight:280,overflowY:'auto'}}>
+              {flowOrphans.noProducer.map(f => (
+                <div key={f.flow} style={{padding:'4px 8px',borderBottom:'1px solid var(--border)',fontSize:12}}>
+                  <code className="tag bridge">{f.flow}</code>
+                  <div style={{color:'var(--muted)',fontSize:11}}>consumed by: {f.consumers.slice(0,5).join(', ')}{f.consumers.length>5 ? ` (+${f.consumers.length-5} more)` : ''}</div>
+                </div>
+              ))}
+            </div>}
+        </div>
+        <div>
+          <h3 style={{fontSize:13}}>No consumer ({flowOrphans.noConsumer.length})</h3>
+          {flowOrphans.noConsumer.length === 0 ? <div className="empty">none</div> :
+            <div style={{maxHeight:280,overflowY:'auto'}}>
+              {flowOrphans.noConsumer.map(f => (
+                <div key={f.flow} style={{padding:'4px 8px',borderBottom:'1px solid var(--border)',fontSize:12}}>
+                  <code className="tag warn">{f.flow}</code>
+                  <div style={{color:'var(--muted)',fontSize:11}}>produced by: {f.producers.slice(0,5).join(', ')}{f.producers.length>5 ? ` (+${f.producers.length-5} more)` : ''}</div>
+                </div>
+              ))}
+            </div>}
+        </div>
+      </div>
+    </div>
+
+    {/* STRATEGIC AI REPORT */}
+    <div className="panel">
+      <h2>Strategic gap analysis (AI-generated)</h2>
+      {gapReport ? (
+        <div>
+          <div style={{padding:'6px 10px',background:'var(--good-soft)',borderRadius:4,marginBottom:10,fontSize:12,color:'var(--good)'}}>
+            ✓ Loaded from <code>data/pipeline/5_synthesis/gap_report.md</code>. Regenerate via <code>python 04_synth.py --model haiku</code> when the database changes.
+          </div>
+          <pre style={{whiteSpace:'pre-wrap',fontFamily:'-apple-system,BlinkMacSystemFont,sans-serif',fontSize:13,lineHeight:1.5,padding:'10px 14px',background:'#fafaf7',border:'1px solid var(--border)',borderRadius:4,maxHeight:600,overflowY:'auto'}}>{gapReport}</pre>
+        </div>
+      ) : (
+        <div style={{padding:'10px 14px',background:'var(--warn-soft)',borderRadius:4,fontSize:13,color:'var(--warn)'}}>
+          No gap report loaded. Run <code>python 04_synth.py --model sonnet</code> in the pipeline folder to generate one, then hard-refresh this page.
+        </div>
+      )}
+    </div>
+  </div>);
+}
+
+// ============ TECH DETAIL MODAL ============
+function TechDetailModal({techId, techs, subsystems, reqs, onClose, onSaved}) {
+  const d = techs.find(x => x.id === techId);
+  if (!d) return null;
+
+  // Local edit state — only sent on Save click
+  const [tags, setTags] = useState((d.tags || []).join(", "));
+  const [appSubs, setAppSubs] = useState(d.applicable_subsystems || []);
+  const [satReqs, setSatReqs] = useState(d.satisfies_requirements || []);
+  const [notes, setNotes] = useState(d.notes || "");
+  const [status, setStatus] = useState(d.status || "DRAFT");
+  const [saveState, setSaveState] = useState("idle"); // idle | saving | ok | err
+  const [saveMsg, setSaveMsg] = useState("");
+
+  // Reset edit state when switching to a different tech
+  useEffect(() => {
+    setTags((d.tags || []).join(", "));
+    setAppSubs(d.applicable_subsystems || []);
+    setSatReqs(d.satisfies_requirements || []);
+    setNotes(d.notes || "");
+    setStatus(d.status || "DRAFT");
+    setSaveState("idle"); setSaveMsg("");
+  }, [techId]);
+
+  const dirty = (
+    tags !== (d.tags || []).join(", ") ||
+    JSON.stringify(appSubs) !== JSON.stringify(d.applicable_subsystems || []) ||
+    JSON.stringify(satReqs) !== JSON.stringify(d.satisfies_requirements || []) ||
+    notes !== (d.notes || "") ||
+    status !== (d.status || "DRAFT")
+  );
+
+  const onSave = async () => {
+    setSaveState("saving"); setSaveMsg("");
+    const payload = {
+      id: d.id,
+      tags: tags.split(",").map(s => s.trim()).filter(Boolean),
+      applicable_subsystems: appSubs,
+      satisfies_requirements: satReqs,
+      notes: notes,
+      status: status,
+    };
+    try {
+      const r = await fetch("/api/save-tech", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        // mutate the in-memory record so the rest of the UI reflects the save
+        d.tags = payload.tags;
+        d.applicable_subsystems = payload.applicable_subsystems;
+        d.satisfies_requirements = payload.satisfies_requirements;
+        d.notes = payload.notes;
+        d.status = payload.status;
+        setSaveState("ok"); setSaveMsg(`saved (updated ${j.updated_fields.join(", ")})`);
+        if (onSaved) onSaved(d);
+      } else {
+        setSaveState("err"); setSaveMsg(j.error || "save failed");
+      }
+    } catch (e) {
+      setSaveState("err"); setSaveMsg(`network error: ${e.message}. Make sure tag_server.py is running (not python -m http.server).`);
+    }
+  };
+
+  const toggleSubsystem = sid => setAppSubs(prev => prev.includes(sid) ? prev.filter(x=>x!==sid) : [...prev, sid]);
+  const toggleReq = rid => setSatReqs(prev => prev.includes(rid) ? prev.filter(x=>x!==rid) : [...prev, rid]);
+
+  const allReqs = (reqs?.requirements || []).filter(r => r.can_be_satisfied_by_tech !== false);
+
+  return (<div className="modal" onClick={onClose}>
+    <div className="modal-content" onClick={e=>e.stopPropagation()} style={{maxWidth:900}}>
+      <button onClick={onClose} style={{float:'right'}}>close</button>
+      <h2>{d.id} — {d.name}</h2>
+
+      {/* INLINE EDITOR */}
+      <div style={{padding:'10px 12px',background:'#fff7ec',border:'1px solid #f5d8a4',borderRadius:4,marginBottom:14}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
+          <strong style={{fontSize:13,color:'#6b4a1a'}}>✏️ Edit</strong>
+          <span style={{fontSize:11,color:'var(--muted)'}}>Saves to data/technologies.jsonl via tag_server.py</span>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'120px 1fr',gap:8,fontSize:12,alignItems:'center'}}>
+          <label>Tags:</label>
+          <input type="text" value={tags} onChange={e=>setTags(e.target.value)}
+            placeholder="comma-separated: e.g. priority-1, needs-spec, bridge-candidate"
+            style={{width:'100%'}} />
+
+          <label>Applicable subsystems:</label>
+          <div style={{display:'flex',flexWrap:'wrap',gap:4,maxHeight:90,overflowY:'auto',padding:4,border:'1px solid var(--border)',borderRadius:3}}>
+            {subsystems.map(s => (
+              <span key={s.id} onClick={()=>toggleSubsystem(s.id)}
+                className={`tag ${appSubs.includes(s.id) ? 'good' : ''}`}
+                style={{cursor:'pointer', userSelect:'none', padding:'2px 6px', fontSize:11}}
+                title={s.name}>
+                {appSubs.includes(s.id) ? '✓ ' : ''}{s.id}
+              </span>
+            ))}
+          </div>
+
+          <label>Satisfies REQ-SYS:</label>
+          <div style={{display:'flex',flexWrap:'wrap',gap:4,maxHeight:90,overflowY:'auto',padding:4,border:'1px solid var(--border)',borderRadius:3}}>
+            {allReqs.map(r => (
+              <span key={r.id} onClick={()=>toggleReq(r.id)}
+                className={`tag ${satReqs.includes(r.id) ? 'req' : ''}`}
+                style={{cursor:'pointer', userSelect:'none', padding:'2px 6px', fontSize:10}}
+                title={r.short || r.text}>
+                {satReqs.includes(r.id) ? '✓ ' : ''}{r.id}
+              </span>
+            ))}
+          </div>
+
+          <label>Status:</label>
+          <select value={status} onChange={e=>setStatus(e.target.value)} style={{width:160}}>
+            <option value="DRAFT">DRAFT</option>
+            <option value="REVIEWED">REVIEWED</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="DEFERRED">DEFERRED</option>
+            <option value="REJECTED">REJECTED</option>
+          </select>
+
+          <label style={{alignSelf:'flex-start',paddingTop:4}}>Notes:</label>
+          <textarea value={notes} onChange={e=>setNotes(e.target.value)}
+            placeholder="Free-text notes — questions to chase, missing data, who to contact, integration concerns..."
+            style={{width:'100%',minHeight:60,fontFamily:'inherit',fontSize:12}} />
+        </div>
+        <div style={{marginTop:8,display:'flex',gap:8,alignItems:'center'}}>
+          <button className="primary" disabled={!dirty || saveState==='saving'} onClick={onSave}>
+            {saveState==='saving' ? 'Saving...' : dirty ? 'Save changes' : 'No changes'}
+          </button>
+          {saveState === 'ok'  && <span style={{color:'var(--good)',fontSize:12}}>✓ {saveMsg}</span>}
+          {saveState === 'err' && <span style={{color:'var(--gap)', fontSize:12}}>✗ {saveMsg}</span>}
+        </div>
+      </div>
+      {d.techport_url && <p style={{margin:'4px 0 10px',padding:'8px 10px',background:'var(--accent-soft)',borderRadius:4,borderLeft:'3px solid var(--accent)'}}>
+        🔗 <strong>NASA TechPort:</strong>{' '}
+        <a href={d.techport_url} target="_blank" rel="noopener noreferrer" style={{color:'var(--accent)'}}>{d.techport_url}</a>
+      </p>}
+      <p>{d.short_description}</p>
+      <p><strong>Function role:</strong> {d.function_role}</p>
+      <p><strong>Category:</strong> {d.category} · <strong>Subsystem:</strong> {d.subsystem} · <strong>TRL:</strong> {d.trl?.value}</p>
+      <p><strong>Applicable subsystems:</strong> {(d.applicable_subsystems||[]).map(s => <span key={s} className="tag">{s}</span>)}</p>
+      <p><strong>Satisfies:</strong> {(d.satisfies_requirements||[]).map(r => <span key={r} className="tag req">{r}</span>)}</p>
+      {d.constrained_by_requirements?.length > 0 && <p><strong>Constrained by:</strong> {d.constrained_by_requirements.map(r => <span key={r} className="tag req">{r}</span>)}</p>}
+      {d.provides_benefits?.length > 0 && <p><strong>Provides:</strong> {d.provides_benefits.map(b => <span key={b} className="tag good">{b}</span>)}</p>}
+      {d.requires_capabilities?.length > 0 && <p><strong>Requires:</strong> {d.requires_capabilities.map(b => <span key={b} className="tag bridge">{b}</span>)}</p>}
+      {d.techport_metadata && <div style={{margin:'10px 0',padding:'10px 12px',background:'var(--good-soft)',borderRadius:4,borderLeft:'3px solid var(--good)'}}>
+        <strong style={{fontSize:12,color:'var(--good)'}}>📋 NASA TECHPORT (scraped {d.techport_metadata.scraped_at})</strong>
+        <table style={{width:'100%',fontSize:12,marginTop:6,borderCollapse:'collapse'}}>
+          <tbody>
+            <tr><td style={{padding:'2px 6px',color:'var(--muted)',width:'35%'}}>Status</td><td style={{padding:'2px 6px',fontWeight:600}}>{d.techport_metadata.project_status}</td></tr>
+            <tr><td style={{padding:'2px 6px',color:'var(--muted)'}}>Lead Org</td><td style={{padding:'2px 6px'}}>{d.techport_metadata.lead_organization}</td></tr>
+            {d.techport_metadata.responsible_program && <tr><td style={{padding:'2px 6px',color:'var(--muted)'}}>Program</td><td style={{padding:'2px 6px'}}>{d.techport_metadata.responsible_program}</td></tr>}
+            {d.techport_metadata.responsible_mission_directorate && <tr><td style={{padding:'2px 6px',color:'var(--muted)'}}>Directorate</td><td style={{padding:'2px 6px'}}>{d.techport_metadata.responsible_mission_directorate}</td></tr>}
+            <tr><td style={{padding:'2px 6px',color:'var(--muted)'}}>Dates</td><td style={{padding:'2px 6px'}}>{d.techport_metadata.start_date} → {d.techport_metadata.end_date}</td></tr>
+            <tr><td style={{padding:'2px 6px',color:'var(--muted)'}}>TRL</td><td style={{padding:'2px 6px'}}>start {d.trl.trl_start ?? '?'} → current {d.trl.trl_current ?? '?'} → target {d.trl.trl_end_target ?? '?'}</td></tr>
+            <tr><td style={{padding:'2px 6px',color:'var(--muted)'}}>NASA taxonomy</td><td style={{padding:'2px 6px',fontFamily:'monospace',fontSize:11}}>{d.techport_metadata.nasa_taxonomy}</td></tr>
+            <tr><td style={{padding:'2px 6px',color:'var(--muted)'}}>Targets</td><td style={{padding:'2px 6px'}}>{(d.techport_metadata.target_destinations || []).join(', ') || '—'}</td></tr>
+            {d.techport_metadata.supporting_organizations && <tr><td style={{padding:'2px 6px',color:'var(--muted)'}}>Supporting</td><td style={{padding:'2px 6px',fontSize:11}}>{d.techport_metadata.supporting_organizations.join(', ')}</td></tr>}
+            <tr><td style={{padding:'2px 6px',color:'var(--muted)'}}>Page views</td><td style={{padding:'2px 6px'}}>{d.techport_metadata.page_views} (updated {d.techport_metadata.page_updated})</td></tr>
+          </tbody>
+        </table>
+        {d.techport_metadata.novelty && <div style={{marginTop:8,padding:'6px 8px',background:'#fff',borderRadius:3,fontSize:12}}><strong>Novelty:</strong> {d.techport_metadata.novelty}</div>}
+        {d.techport_metadata.honest_outcome && <div style={{marginTop:6,padding:'6px 8px',background:'var(--warn-soft)',borderRadius:3,fontSize:12,color:'var(--warn)'}}><strong>Honest outcome:</strong> {d.techport_metadata.honest_outcome}</div>}
+        {d.techport_metadata.context_warning && <div style={{marginTop:6,padding:'6px 8px',background:'var(--gap-soft)',borderRadius:3,fontSize:12,color:'var(--gap)'}}><strong>⚠ Context:</strong> {d.techport_metadata.context_warning}</div>}
+      </div>}
+      {d.sources?.length > 0 && <div style={{margin:'10px 0'}}>
+        <strong>Sources:</strong>
+        <ul style={{margin:'4px 0',paddingLeft:20}}>
+          {d.sources.map((s, i) => (<li key={i} style={{fontSize:12,marginBottom:2}}>
+            {s.source_id && <code style={{marginRight:4}}>{s.source_id}</code>}
+            {s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || s.url}</a> : <span>{s.title || s.excerpt || ''}</span>}
+            {s.page && <span style={{color:'var(--muted)'}}> p.{s.page}</span>}
+            {s.flag && <span className="tag warn" style={{marginLeft:6,fontSize:10}}>{s.flag}</span>}
+          </li>))}
+        </ul>
+      </div>}
+      <details open><summary>Inputs</summary><pre style={{background:'#f4efe8',padding:8,borderRadius:4,overflow:'auto',fontSize:11}}>{JSON.stringify(d.inputs, null, 2)}</pre></details>
+      <details open><summary>Outputs</summary><pre style={{background:'#f4efe8',padding:8,borderRadius:4,overflow:'auto',fontSize:11}}>{JSON.stringify(d.outputs, null, 2)}</pre></details>
+      <details><summary>Full record</summary><pre style={{background:'#f4efe8',padding:8,borderRadius:4,overflow:'auto',fontSize:11}}>{JSON.stringify(d, null, 2)}</pre></details>
+    </div>
+  </div>);
+}
+
+// ============ MOUNT ============
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+
+</body>
+</html>

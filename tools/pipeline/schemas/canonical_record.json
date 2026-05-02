@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Canonical Pipeline Record",
+  "description": "Schema for one row in 3_parsed/records.jsonl (and, after enrichment, 4_enriched/records_enriched.jsonl). All claims point back to source via the citations block.",
+  "type": "object",
+  "required": ["id", "source", "structured"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable ID, format <source>_<source_id>, e.g. techport_95135",
+      "examples": ["techport_95135"]
+    },
+    "source": {
+      "type": "object",
+      "description": "Provenance — never modified after stage 2.",
+      "required": ["url", "fetched_at", "raw_path", "content_hash", "parser_version"],
+      "properties": {
+        "url":             {"type": "string", "format": "uri"},
+        "fetched_at":      {"type": "string", "format": "date-time"},
+        "raw_path":        {"type": "string", "description": "Path relative to repo root, points to raw response in 2_raw/"},
+        "content_hash":    {"type": "string", "description": "sha256:HEX of the raw bytes"},
+        "parser_version":  {"type": "string", "examples": ["techport_v1.0"]},
+        "parsed_at":       {"type": "string", "format": "date-time"}
+      }
+    },
+    "structured": {
+      "type": "object",
+      "description": "Deterministically extracted fields from the raw response. No LLM involvement.",
+      "required": ["title"],
+      "properties": {
+        "project_id":                       {"type": "string"},
+        "title":                            {"type": "string"},
+        "description":                      {"type": ["string","null"]},
+        "anticipated_benefits":             {"type": ["string","null"]},
+        "trl_start":                        {"type": ["integer","null"]},
+        "trl_current":                      {"type": ["integer","null"]},
+        "trl_end_target":                   {"type": ["integer","null"]},
+        "project_status":                   {"type": ["string","null"]},
+        "start_date":                       {"type": ["string","null"]},
+        "end_date":                         {"type": ["string","null"]},
+        "lead_organization":                {"type": ["string","null"]},
+        "responsible_program":              {"type": ["string","null"]},
+        "responsible_mission_directorate":  {"type": ["string","null"]},
+        "primary_taxonomy":                 {"type": "array", "items": {"type": "string"}},
+        "target_destinations":              {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "enriched": {
+      "type": "object",
+      "description": "LLM-derived judgment fields. Added by stage 3 (03_enrich.py). Versioned via _enrichment.prompt_version.",
+      "properties": {
+        "applicable_subsystems":    {"type": "array", "items": {"type": "string"}},
+        "satisfies_requirements":   {"type": "array", "items": {"type": "string", "pattern": "^REQ-SYS-[0-9]{3}$"}},
+        "novelty_summary":          {"type": "string"},
+        "tradespace_role":          {"type": "string", "enum": ["primary","alternative","redundancy_backup","bridge","transformational"]},
+        "_confidence":              {"type": "string", "enum": ["HIGH","MED","LOW"]},
+        "_enrichment": {
+          "type": "object",
+          "description": "Audit metadata.",
+          "required": ["model","prompt_version","enriched_at"],
+          "properties": {
+            "model":          {"type": "string"},
+            "prompt_version": {"type": "string"},
+            "enriched_at":    {"type": "string", "format": "date-time"}
+          }
+        }
+      }
+    },
+    "citations": {
+      "type": "object",
+      "description": "Per-field provenance. Maps a field name in `structured` to the JSON path inside the raw response that supplied it.",
+      "additionalProperties": {"type": "string"}
+    }
+  }
+}

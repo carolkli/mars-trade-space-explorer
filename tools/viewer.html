@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mars to Table — Trade Space Explorer</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #fafaf7;
+    --panel: #ffffff;
+    --border: #d8d6d0;
+    --ink: #1c1c1c;
+    --muted: #6b6b66;
+    --accent: #b6491c;
+    --accent-soft: #f3e2d6;
+    --gap: #c43e3e;
+    --gap-soft: #fbe7e7;
+    --bridge: #4d6b9a;
+    --bridge-soft: #e3edf9;
+    --good: #2f7a3a;
+    --good-soft: #e1f1e3;
+    --warn: #b08000;
+    --warn-soft: #fbf1d4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--panel);
+    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  header .right { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; cursor: pointer; padding: 5px 10px; border: 1px solid var(--border);
+    background: var(--panel); border-radius: 4px; color: var(--ink); font-size: 13px; }
+  button:hover { background: #f2efea; }
+  button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  button.primary:hover { background: #9c3e18; }
+  input[type=text], select, textarea { font: inherit; padding: 5px 8px; border: 1px solid var(--border);
+    background: var(--panel); border-radius: 4px; }
+  .tabs { display: flex; gap: 4px; padding: 0 20px; background: var(--panel);
+    border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .tab { padding: 10px 14px; cursor: pointer; border-bottom: 2px solid transparent; user-select: none; white-space: nowrap; }
+  .tab.active { border-bottom-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .tab .count { background: var(--accent-soft); color: var(--accent); padding: 1px 6px; margin-left: 4px;
+    border-radius: 8px; font-size: 11px; font-weight: 600; }
+  main { padding: 14px 20px 60px; max-width: 1500px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 14px; margin-bottom: 14px; }
+  .panel h2 { font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .panel h2 .pill { background: var(--gap-soft); color: var(--gap); padding: 1px 7px; border-radius: 9px;
+    font-size: 11px; margin-left: 6px; font-weight: 600; }
+  .panel h2 .pill.good { background: var(--good-soft); color: var(--good); }
+  .empty { color: var(--muted); font-style: italic; padding: 16px 0; text-align: center; }
+  .help { background: #fff7ec; border: 1px solid #f5d8a4; padding: 8px 12px; border-radius: 4px;
+    color: #6b4a1a; font-size: 13px; margin-bottom: 12px; }
+  .tag { display: inline-block; padding: 1px 6px; margin: 1px 2px 1px 0; border-radius: 3px; font-size: 11px;
+    background: #eee8e0; color: #5a4f42; }
+  .tag.req { background: var(--accent-soft); color: var(--accent); font-family: monospace; }
+  .tag.gap { background: var(--gap-soft); color: var(--gap); }
+  .tag.bridge { background: var(--bridge-soft); color: var(--bridge); }
+  .tag.good { background: var(--good-soft); color: var(--good); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  code { font-size: 12px; background: #f4efe8; padding: 1px 4px; border-radius: 3px; }
+  pre { background: #f4efe8; padding: 8px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+  details { margin: 6px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+
+  /* System Designer grid */
+  .ss-grid { display: flex; flex-direction: column; gap: 14px; }
+  .ss-grid-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+  .ss-group { background: #f5f1ea; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .ss-group-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .ss-group-name { font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); }
+  .ss-group-meta { font-size: 12px; color: var(--muted); }
+  .ss-group-desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .totals-section { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 4px 10px;
+    border-left: 3px solid var(--accent); background: #faf6f1; border-radius: 4px; }
+  .totals-section-label { font-size: 10px; font-weight: 700; color: var(--accent); letter-spacing: 0.08em;
+    padding-right: 8px; border-right: 1px solid var(--border); }
+  .totals-bar { flex-direction: column; gap: 6px; align-items: stretch; }
+  .totals-item .val.pos { color: var(--good); }
+  .totals-item .val.neg { color: var(--gap); }
+  .ss-card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 8px; }
+  .ss-card.has-selection { border-color: var(--accent); border-left-width: 4px; }
+  .ss-card.unfilled { border-left: 4px solid var(--muted); }
+  .ss-card .ss-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .ss-card .ss-name { font-weight: 600; font-size: 14px; }
+  .ss-card .ss-team { font-size: 11px; color: var(--muted); }
+  .ss-card .ss-desc { font-size: 12px; color: var(--muted); }
+  .ss-card .ss-status { font-size: 11px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .ss-card .ss-techs { max-height: 200px; overflow-y: auto; border: 1px solid var(--border);
+    border-radius: 4px; padding: 6px 8px; font-size: 12px; }
+  .ss-card .ss-tech-row { display: flex; align-items: flex-start; gap: 6px; padding: 3px 0; cursor: pointer; }
+  .ss-card .ss-tech-row:hover { background: #faf6f1; }
+  .ss-card .ss-tech-row.selected { font-weight: 600; }
+  .ss-card .ss-tech-row .meta { color: var(--muted); font-size: 11px; }
+  .ss-card .ss-io { font-size: 11px; }
+  .ss-card .ss-io .row { display: flex; gap: 4px; align-items: baseline; padding: 1px 0; }
+  .ss-card .ss-io .row .arrow { color: var(--muted); width: 12px; }
+  .ss-card .ss-totals { font-size: 11px; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 6px; }
+
+  /* Integration matrix */
+  .integ-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .integ-table th, .integ-table td { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .integ-table th { font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .integ-table tr.balanced { background: var(--good-soft); }
+  .integ-table tr.deficit { background: var(--gap-soft); }
+  .integ-table tr.surplus { background: var(--warn-soft); }
+  .integ-table tr.orphan { background: var(--bridge-soft); }
+  .integ-table .balance { font-family: monospace; }
+
+  /* Bridge slot card */
+  .bridge-card { border: 1px dashed var(--bridge); border-left: 4px solid var(--bridge);
+    background: var(--bridge-soft); padding: 10px 14px; margin-bottom: 8px; border-radius: 4px; }
+  .bridge-card .title { font-weight: 600; }
+  .bridge-card textarea { width: 100%; min-height: 50px; margin-top: 6px; }
+
+  /* Browse table */
+  table.tech-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tech-table th, table.tech-table td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.tech-table th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; user-select: none; }
+  table.tech-table tr:hover { background: #faf6f1; cursor: pointer; }
+
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+  .gap-card { border: 1px solid var(--border); border-left: 4px solid var(--gap); padding: 8px 14px;
+    margin-bottom: 6px; background: var(--panel); border-radius: 4px; }
+  .gap-card.bridge { border-left-color: var(--bridge); }
+  .gap-card.function { border-left-color: var(--accent); }
+  .gap-card .title { font-weight: 600; margin-bottom: 2px; font-size: 13px; }
+  .gap-card .meta { color: var(--muted); font-size: 12px; }
+
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center;
+    justify-content: center; z-index: 100; }
+  .modal.open { display: flex; }
+  .modal-content { background: var(--panel); padding: 20px; border-radius: 6px; max-width: 800px;
+    max-height: 80vh; overflow-y: auto; width: 90%; }
+  .modal-content h2 { margin-top: 0; }
+
+  .totals-bar { background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 14px; margin-bottom: 14px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; }
+  .totals-bar .totals-item { display: flex; gap: 4px; }
+  .totals-bar .totals-item .label { color: var(--muted); }
+  .totals-bar .totals-item .val { font-weight: 600; font-family: monospace; }
+  .totals-bar .totals-item.over .val { color: var(--gap); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mars to Table — Trade Space Explorer</h1>
+  <span class="sub" id="metaCount">no data loaded</span>
+  <div class="right">
+    <input type="file" id="techFile" accept=".jsonl" style="display:none" />
+    <input type="file" id="ssFile" accept=".json" style="display:none" />
+    <button id="loadTechBtn">Load technologies.jsonl</button>
+    <button id="loadSSBtn">Load subsystems.json</button>
+    <button id="autoLoadBtn">Auto-load both</button>
+    <button id="exportBtn">Export architecture</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="designer">System Designer</div>
+  <div class="tab" data-tab="browse">Browse <span class="count" id="browseCount">0</span></div>
+  <div class="tab" data-tab="gaps">Auto gap report <span class="count" id="gapCount">0</span></div>
+  <div class="tab" data-tab="reqs">Requirements coverage</div>
+  <div class="tab" data-tab="help">Help</div>
+</div>
+
+<main>
+
+<!-- ==================== SYSTEM DESIGNER (default) ==================== -->
+<section id="tab-designer" class="tab-pane">
+  <div class="help">
+    <strong>How it works.</strong> Each card below is a <em>major subsystem</em> of the Mars to Table architecture.
+    For each subsystem, pick one or more candidate technologies (parallel selection allowed for redundancy).
+    The <strong>Integration view</strong> below the grid shows where the chosen techs' flows wire up cleanly between
+    subsystems — and where they don't, surfacing a <strong style="color:var(--bridge)">bridge slot</strong>: a place
+    where the team needs to find or invent a connecting technology.
+  </div>
+
+  <div class="totals-bar" id="totalsBar"></div>
+
+  <div class="ss-grid" id="ssGrid"></div>
+
+  <div class="panel" style="margin-top:18px">
+    <h2>Integration view — flow by flow</h2>
+    <p style="color:var(--muted); font-size:12px; margin: 0 0 10px;">
+      For each interface flow used by your selected architecture: which subsystem produces it, which consumes it,
+      and the net balance. <span class="tag good">balanced</span> = supply meets demand; <span class="tag gap">deficit</span> = need more producer; <span class="tag warn">surplus</span> = need a consumer or vent; <span class="tag bridge">orphan</span> = no producer or no consumer at all (almost certainly a bridge slot).
+    </p>
+    <table class="integ-table" id="integTable">
+      <thead><tr><th>Flow</th><th>Producers</th><th>Consumers</th><th class="balance">Net</th><th>Status</th></tr></thead>
+      <tbody id="integTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>Bridge slots — innovation opportunities <span class="pill" id="bridgeSlotCount">0</span></h2>
+    <p style="color:var(--muted); font-size:12px; margin: 0 0 10px;">
+      Each card below is a place in the architecture where two subsystems don't yet smoothly interface.
+      Label what bridging tech is needed — these become hand-offs to the team's research / design effort.
+    </p>
+    <div id="bridgeSlots"></div>
+  </div>
+</section>
+
+<!-- ==================== BROWSE ==================== -->
+<section id="tab-browse" class="tab-pane" hidden>
+  <div class="panel">
+    <div class="filter-row">
+      <input type="text" id="searchBox" placeholder="Search name, tags, function..." style="flex:1; min-width:200px" />
+      <select id="filterCategory"><option value="">All categories</option></select>
+      <select id="filterSubsystem"><option value="">All STs</option></select>
+      <select id="filterReq"><option value="">All REQ-SYS</option></select>
+      <select id="filterTrl">
+        <option value="">All TRL</option>
+        <option value="9">TRL 9</option>
+        <option value="7">TRL 7+</option>
+        <option value="5">TRL 5+</option>
+        <option value="3">TRL 3+</option>
+      </select>
+    </div>
+    <table class="tech-table" id="techTable">
+      <thead>
+        <tr>
+          <th>ID</th><th>Name</th><th>Category</th><th>TRL</th><th>Mass</th><th>Power</th><th>Crew</th><th>Satisfies</th><th>Tags</th>
+        </tr>
+      </thead>
+      <tbody id="techTableBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== GAPS ==================== -->
+<section id="tab-gaps" class="tab-pane" hidden>
+  <div class="help">
+    Automated scan across the <em>entire database</em> (ignoring your current architecture selection). Useful for
+    finding holes in the database itself. The Integration view inside System Designer is the right tool for finding
+    holes in <em>your chosen</em> architecture.
+  </div>
+
+  <div class="panel">
+    <h2>Function gaps (REQ-SYS with no candidate tech in DB) <span class="pill" id="fgapCount">0</span></h2>
+    <div id="functionGaps"></div>
+  </div>
+  <div class="panel">
+    <h2>Interface gaps (flow with no producer or consumer) <span class="pill" id="igapCount">0</span></h2>
+    <div id="interfaceGaps"></div>
+  </div>
+  <div class="panel">
+    <h2>Bridge gaps (output A almost matches input B via bridges_to) <span class="pill" id="bgapCount">0</span></h2>
+    <div id="bridgeGaps"></div>
+  </div>
+</section>
+
+<!-- ==================== REQS ==================== -->
+<section id="tab-reqs" class="tab-pane" hidden>
+  <div class="panel">
+    <h2>REQ-SYS coverage by tech count</h2>
+    <p style="color:var(--muted); font-size:12px;">Zero-coverage rows are function gaps. Many REQ-SYS are policy /
+       documentation requirements that won't have a satisfying tech (e.g. REQ-SYS-037 PDF format) — those zero-rows
+       are not "real" gaps.</p>
+    <table class="tech-table" id="reqTable">
+      <thead><tr><th>REQ-SYS</th><th>#</th><th>Tech list</th></tr></thead>
+      <tbody id="reqTableBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== HELP ==================== -->
+<section id="tab-help" class="tab-pane" hidden>
+  <div class="panel">
+    <h2>How to use this tool</h2>
+    <h3>Loading data</h3>
+    <ul>
+      <li><strong>Auto-load both</strong> works if you served this folder via a local web server (e.g. <code>python -m http.server 8000</code> from the trade space explorer root, then open http://localhost:8000/tools/viewer.html).</li>
+      <li>Otherwise click <strong>Load technologies.jsonl</strong> and pick <code>data/technologies.jsonl</code>; then click <strong>Load subsystems.json</strong> and pick <code>data/subsystems.json</code>.</li>
+    </ul>
+
+    <h3>System Designer workflow</h3>
+    <ol>
+      <li>Look at the subsystem grid. Each card is a major subsystem you need to fill.</li>
+      <li>For each card, the candidate techs are filtered from the DB by the subsystem's <code>match_categories</code>, <code>match_tags</code>, and <code>expected_outputs</code> rules in <code>subsystems.json</code>. Edit that file to refine matching.</li>
+      <li>Click any candidate tech to add it to the subsystem. Click again to remove. Multiple techs per subsystem = parallel/redundant operation.</li>
+      <li>Watch the <strong>Integration view</strong> live-update. Green rows = your architecture closes that flow. Red = deficit. Yellow = surplus (vent or use). Blue = orphan / bridge slot.</li>
+      <li>For each blue/red row, drop into <strong>Bridge slots</strong>, label what tech is needed, and assign it as a research action to the team.</li>
+    </ol>
+
+    <h3>Editing subsystems.json</h3>
+    <p>The subsystem decomposition isn't fixed — it's the team's working model. Edit <code>data/subsystems.json</code> to add, remove, or refine subsystems. Each subsystem entry needs:</p>
+    <ul>
+      <li><code>id</code> — unique slug</li>
+      <li><code>name</code>, <code>description</code></li>
+      <li><code>match_categories</code> — array of tech-category strings to filter candidates</li>
+      <li><code>match_tags</code> (optional) — array of tag strings to also include</li>
+      <li><code>expected_outputs</code> / <code>expected_inputs</code> — flow_ids the team expects this subsystem to handle</li>
+      <li><code>allow_parallel</code> — true if multiple techs can fill it</li>
+      <li><code>owner_subteam</code> — ST1, ST2, ST3, ST4</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<div class="modal" id="detailModal">
+  <div class="modal-content">
+    <button onclick="document.getElementById('detailModal').classList.remove('open')" style="float:right">close</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============== STATE ==============
+let DATA = [];          // array of tech entries from technologies.jsonl
+let SUBSYSTEMS = [];    // array from subsystems.json
+let GROUPS = [];        // array of {id, name, description} for grouping
+let SELECTED = {};      // { subsystem_id: [tech_id, tech_id, ...] }
+let BRIDGE_NOTES = {};  // { bridge_slot_key: { name, description } }
+
+const ALL_REQS = Array.from({length:60}, (_,i) => `REQ-SYS-${String(i+1).padStart(3,'0')}`);
+
+// BVAD-typical equivalency factors for ESM (Mars surface). Tweak these to your team's accepted values.
+const ESM_FACTORS = {
+  Fv:  66,    // kg per m^3 of pressurized volume
+  Fp:  87,    // kg per kW of power
+  Fc:  60,    // kg per kW of cooling
+  Fct: 1.0,   // kg per CM-h/y of crew time (CM = crewmember)
+};
+
+// ============== HELPERS ==============
+function escape(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function num(v, d=0) { return (v == null || isNaN(v)) ? d : Number(v); }
+function fillSelect(id, opts) {
+  const sel = document.getElementById(id);
+  const cur = sel.value;
+  sel.innerHTML = sel.firstElementChild.outerHTML + opts.map(o => `<option value="${o}">${o}</option>`).join('');
+  sel.value = cur;
+}
+
+// ============== LOADERS ==============
+async function tryAutoLoad() {
+  let okTech = false, okSS = false;
+  try {
+    const r = await fetch('../data/technologies.jsonl');
+    if (r.ok) { loadTechFromText(await r.text()); okTech = true; }
+  } catch (e) {}
+  try {
+    const r = await fetch('../data/subsystems.json');
+    if (r.ok) { loadSSFromText(await r.text()); okSS = true; }
+  } catch (e) {}
+  if (!okTech || !okSS) {
+    console.warn('auto-load partial:', {okTech, okSS});
+  }
+}
+
+function loadTechFromText(text) {
+  DATA = text.trim().split('\n').filter(l => l.trim()).map((l, i) => {
+    try { return JSON.parse(l); }
+    catch (e) { console.error(`tech parse error line ${i+1}: ${e.message}`); return null; }
+  }).filter(Boolean);
+  updateMeta();
+  if (SUBSYSTEMS.length) renderAll();
+}
+
+function loadSSFromText(text) {
+  const obj = JSON.parse(text);
+  SUBSYSTEMS = obj.subsystems || [];
+  GROUPS = obj.groups || [];
+  // initialize SELECTED
+  SUBSYSTEMS.forEach(s => { if (!SELECTED[s.id]) SELECTED[s.id] = []; });
+  updateMeta();
+  if (DATA.length) renderAll();
+}
+
+function updateMeta() {
+  document.getElementById('metaCount').textContent =
+    `${DATA.length} technologies, ${SUBSYSTEMS.length} subsystems loaded`;
+}
+
+document.getElementById('techFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader(); r.onload = () => loadTechFromText(r.result); r.readAsText(f);
+});
+document.getElementById('ssFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader(); r.onload = () => loadSSFromText(r.result); r.readAsText(f);
+});
+document.getElementById('loadTechBtn').addEventListener('click', () => document.getElementById('techFile').click());
+document.getElementById('loadSSBtn').addEventListener('click', () => document.getElementById('ssFile').click());
+document.getElementById('autoLoadBtn').addEventListener('click', tryAutoLoad);
+document.getElementById('exportBtn').addEventListener('click', exportArchitecture);
+
+// ============== TABS ==============
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('.tab-pane').forEach(p => p.hidden = true);
+    document.getElementById('tab-' + t.dataset.tab).hidden = false;
+  });
+});
+
+// ============== RENDER DISPATCH ==============
+function renderAll() {
+  renderSystemDesigner();
+  renderBrowse();
+  renderAutoGaps();
+  renderReqs();
+  document.getElementById('browseCount').textContent = DATA.length;
+}
+
+// ============== SYSTEM DESIGNER ==============
+function candidateTechsFor(sub) {
+  return DATA.filter(d => {
+    if ((sub.match_categories||[]).includes(d.category)) return true;
+    if ((sub.match_tags||[]).some(t => (d.tags||[]).includes(t))) return true;
+    // also include if this tech outputs any of the subsystem's expected outputs
+    if ((sub.expected_outputs||[]).some(eo => (d.outputs||[]).some(o => o.flow_id === eo))) return true;
+    return false;
+  });
+}
+
+function aggregateSubsystemIO(sub) {
+  const inputs = {}, outputs = {};
+  let mass = 0, vol = 0, power = 0, crew = 0;
+  (SELECTED[sub.id] || []).forEach(tid => {
+    const d = DATA.find(x => x.id === tid); if (!d) return;
+    mass += num((d.mass_kg||{}).value);
+    vol += num((d.volume_m3||{}).value);
+    power += num((d.power_w||{}).nominal);
+    crew += num((d.crew_time_hr_per_sol||{}).nominal);
+    (d.inputs||[]).forEach(i => inputs[i.flow_id] = (inputs[i.flow_id]||0) + num(i.rate));
+    (d.outputs||[]).forEach(o => outputs[o.flow_id] = (outputs[o.flow_id]||0) + num(o.rate));
+  });
+  return { inputs, outputs, mass, vol, power, crew };
+}
+
+function renderSystemDesigner() {
+  if (!SUBSYSTEMS.length || !DATA.length) {
+    document.getElementById('ssGrid').innerHTML = '<div class="empty">load both technologies.jsonl and subsystems.json</div>';
+    return;
+  }
+  // Cards, grouped by `group` field if groups defined
+  const grid = document.getElementById('ssGrid');
+  if (GROUPS.length) {
+    // bucket subsystems by group, keep group order from GROUPS, then any ungrouped at end
+    const buckets = {};
+    GROUPS.forEach(g => buckets[g.id] = []);
+    const ungrouped = [];
+    SUBSYSTEMS.forEach(s => {
+      if (s.group && buckets[s.group]) buckets[s.group].push(s);
+      else ungrouped.push(s);
+    });
+    grid.innerHTML = GROUPS.map(g => {
+      if (!buckets[g.id].length) return '';
+      const filledCount = buckets[g.id].filter(s => (SELECTED[s.id]||[]).length).length;
+      return `<div class="ss-group">
+        <div class="ss-group-header">
+          <span class="ss-group-name">${escape(g.name)}</span>
+          <span class="ss-group-meta">${filledCount}/${buckets[g.id].length} filled</span>
+        </div>
+        <div class="ss-group-desc">${escape(g.description||'')}</div>
+        <div class="ss-grid-inner">${buckets[g.id].map(s => renderSSCard(s)).join('')}</div>
+      </div>`;
+    }).join('') + (ungrouped.length ?
+      `<div class="ss-group"><div class="ss-group-header"><span class="ss-group-name">Other</span></div>
+       <div class="ss-grid-inner">${ungrouped.map(s => renderSSCard(s)).join('')}</div></div>` : '');
+  } else {
+    grid.innerHTML = `<div class="ss-grid-inner">${SUBSYSTEMS.map(s => renderSSCard(s)).join('')}</div>`;
+  }
+  // Totals + scoring
+  renderTotalsBar();
+  // Integration view
+  renderIntegration();
+  // Bridge slots
+  renderBridgeSlots();
+}
+
+function renderSSCard(sub) {
+  const candidates = candidateTechsFor(sub);
+  const sel = SELECTED[sub.id] || [];
+  const agg = aggregateSubsystemIO(sub);
+
+  const expOut = (sub.expected_outputs||[]);
+  const expIn = (sub.expected_inputs||[]);
+  const covOut = expOut.filter(f => agg.outputs[f] != null);
+  const covIn = expIn.filter(f => agg.inputs[f] != null);
+
+  return `
+    <div class="ss-card ${sel.length ? 'has-selection' : 'unfilled'}">
+      <div class="ss-header">
+        <div>
+          <div class="ss-name">${escape(sub.name)}</div>
+          <div class="ss-team">${sub.owner_subteam || ''} · ${sub.id}</div>
+        </div>
+        <div class="ss-status">
+          ${sel.length ? `<span class="tag good">${sel.length} selected</span>` : `<span class="tag">empty</span>`}
+        </div>
+      </div>
+      <div class="ss-desc">${escape(sub.description||'')}</div>
+
+      ${expOut.length ? `<div class="ss-status">
+        <span class="tag ${covOut.length === expOut.length && expOut.length ? 'good' : 'warn'}">outputs ${covOut.length}/${expOut.length}</span>
+        ${expOut.map(f => `<span class="tag ${agg.outputs[f]?'good':'warn'}">${f}</span>`).join('')}
+      </div>` : ''}
+      ${expIn.length ? `<div class="ss-status">
+        <span class="tag ${covIn.length === expIn.length && expIn.length ? 'good' : 'warn'}">inputs ${covIn.length}/${expIn.length}</span>
+        ${expIn.map(f => `<span class="tag ${agg.inputs[f]?'good':'warn'}">${f}</span>`).join('')}
+      </div>` : ''}
+
+      <div class="ss-techs">
+        ${candidates.length ? candidates.map(d => `
+          <div class="ss-tech-row ${sel.includes(d.id)?'selected':''}" onclick="toggleTech('${sub.id}','${d.id}')">
+            <input type="checkbox" ${sel.includes(d.id)?'checked':''} onclick="event.stopPropagation();toggleTech('${sub.id}','${d.id}')" />
+            <div style="flex:1">
+              <div>${escape(d.name)} <span class="meta">[TRL ${d.trl?.value ?? '?'}]</span></div>
+              <div class="meta">${escape(d.short_description||'')}</div>
+            </div>
+            <span class="meta" onclick="event.stopPropagation();showDetail('${d.id}')" style="cursor:pointer;text-decoration:underline">view</span>
+          </div>
+        `).join('') : '<div class="empty" style="padding:8px">no candidate techs in DB</div>'}
+      </div>
+
+      ${sel.length ? `
+        <div class="ss-totals">
+          mass ${agg.mass.toFixed(1)} kg · vol ${agg.vol.toFixed(2)} m³ · power ${agg.power.toFixed(0)} W · crew ${agg.crew.toFixed(2)} hr/sol
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+window.toggleTech = function(subId, techId) {
+  if (!SELECTED[subId]) SELECTED[subId] = [];
+  const i = SELECTED[subId].indexOf(techId);
+  if (i >= 0) SELECTED[subId].splice(i, 1);
+  else SELECTED[subId].push(techId);
+  renderSystemDesigner();
+};
+
+function renderTotalsBar() {
+  let mass=0, vol=0, power=0, crew=0, count=0;
+  const trls = [];
+  const reqsCovered = new Set();
+  const flowBalance = {};
+  SUBSYSTEMS.forEach(s => {
+    const a = aggregateSubsystemIO(s);
+    mass += a.mass; vol += a.vol; power += a.power; crew += a.crew;
+    (SELECTED[s.id]||[]).forEach(tid => {
+      count++;
+      const d = DATA.find(x => x.id === tid); if (!d) return;
+      if (d.trl?.value) trls.push(d.trl.value);
+      (d.satisfies_requirements||[]).forEach(r => reqsCovered.add(r));
+    });
+    Object.entries(a.outputs).forEach(([f, r]) => flowBalance[f] = (flowBalance[f]||0) + r);
+    Object.entries(a.inputs).forEach(([f, r]) => flowBalance[f] = (flowBalance[f]||0) - r);
+  });
+
+  const crewBudget = 18;
+  const trlAvg = trls.length ? (trls.reduce((a,b)=>a+b,0) / trls.length).toFixed(1) : '–';
+  const trlMin = trls.length ? Math.min(...trls) : '–';
+  const trlMax = trls.length ? Math.max(...trls) : '–';
+
+  // ESM (kg-equivalent) using BVAD-typical Mars-surface factors
+  const esm = mass + vol*ESM_FACTORS.Fv + (power/1000)*ESM_FACTORS.Fp + (crew*365)*ESM_FACTORS.Fct;
+
+  // Coverage of REQ-SYS, excluding pure compliance/admin requirements
+  const adminReqs = new Set(['REQ-SYS-037','REQ-SYS-038','REQ-SYS-039']);
+  const coverageReqs = ALL_REQS.filter(r => !adminReqs.has(r));
+  const coveragePct = ((coverageReqs.filter(r => reqsCovered.has(r)).length / coverageReqs.length) * 100).toFixed(0);
+
+  const keyFlows = [
+    {flow:'electric_power_dc', label:'power', units:'W'},
+    {flow:'potable_water', label:'potable H₂O', units:'L/sol'},
+    {flow:'irrigation_water', label:'irrigation H₂O', units:'L/sol'},
+    {flow:'o2_gas', label:'O₂', units:'kg/sol'},
+    {flow:'co2_gas', label:'CO₂', units:'kg/sol'},
+  ];
+
+  document.getElementById('totalsBar').innerHTML = `
+    <div class="totals-section">
+      <div class="totals-section-label">SCALE</div>
+      <div class="totals-item"><span class="label">techs</span><span class="val">${count}</span></div>
+      <div class="totals-item"><span class="label">mass</span><span class="val">${mass.toFixed(0)} kg</span></div>
+      <div class="totals-item"><span class="label">volume</span><span class="val">${vol.toFixed(1)} m³</span></div>
+      <div class="totals-item"><span class="label">power</span><span class="val">${power.toFixed(0)} W</span></div>
+      <div class="totals-item ${crew>crewBudget?'over':''}"><span class="label">crew</span><span class="val">${crew.toFixed(1)}/${crewBudget} hr/sol</span></div>
+      <div class="totals-item"><span class="label">ESM</span><span class="val">${esm.toFixed(0)} kg-eq</span></div>
+    </div>
+    <div class="totals-section">
+      <div class="totals-section-label">TRL & COVERAGE</div>
+      <div class="totals-item"><span class="label">avg</span><span class="val">${trlAvg}</span></div>
+      <div class="totals-item"><span class="label">weakest</span><span class="val ${typeof trlMin==='number' && trlMin<5?'over':''}">${trlMin}</span></div>
+      <div class="totals-item"><span class="label">strongest</span><span class="val">${trlMax}</span></div>
+      <div class="totals-item"><span class="label">REQ-SYS</span><span class="val">${coveragePct}%</span></div>
+    </div>
+    <div class="totals-section">
+      <div class="totals-section-label">NET BALANCES</div>
+      ${keyFlows.map(k => {
+        const v = flowBalance[k.flow];
+        if (v == null) return '';
+        const cls = v > 0.001 ? 'pos' : (v < -0.001 ? 'neg' : '');
+        const sign = v >= 0 ? '+' : '';
+        return `<div class="totals-item"><span class="label">${k.label}</span><span class="val ${cls}">${sign}${v.toFixed(2)} ${k.units}</span></div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ============== INTEGRATION VIEW ==============
+function renderIntegration() {
+  // Build per-subsystem aggregate
+  const aggBySS = {};
+  SUBSYSTEMS.forEach(s => aggBySS[s.id] = aggregateSubsystemIO(s));
+
+  // Collect all flows touched
+  const flowsByProducer = {}, flowsByConsumer = {};
+  Object.entries(aggBySS).forEach(([sid, a]) => {
+    Object.entries(a.outputs).forEach(([f, r]) => {
+      if (!flowsByProducer[f]) flowsByProducer[f] = [];
+      flowsByProducer[f].push({ sid, rate: r });
+    });
+    Object.entries(a.inputs).forEach(([f, r]) => {
+      if (!flowsByConsumer[f]) flowsByConsumer[f] = [];
+      flowsByConsumer[f].push({ sid, rate: r });
+    });
+  });
+  const allFlows = new Set([...Object.keys(flowsByProducer), ...Object.keys(flowsByConsumer)]);
+
+  const rows = [...allFlows].sort().map(f => {
+    const prods = flowsByProducer[f] || [];
+    const cons = flowsByConsumer[f] || [];
+    const totalProd = prods.reduce((a, p) => a + p.rate, 0);
+    const totalCons = cons.reduce((a, c) => a + c.rate, 0);
+    const net = totalProd - totalCons;
+    let status = '', cls = '';
+    if (prods.length === 0) { status = 'orphan: no producer'; cls = 'orphan'; }
+    else if (cons.length === 0) { status = 'orphan: no consumer'; cls = 'orphan'; }
+    else if (Math.abs(net) < 0.001) { status = 'balanced'; cls = 'balanced'; }
+    else if (net < 0) { status = 'deficit'; cls = 'deficit'; }
+    else { status = 'surplus'; cls = 'surplus'; }
+    return `<tr class="${cls}">
+      <td><code>${f}</code></td>
+      <td>${prods.map(p => `${p.sid} <span style="color:var(--muted)">(${p.rate.toFixed(2)})</span>`).join('<br>') || '<span class="tag bridge">—</span>'}</td>
+      <td>${cons.map(c => `${c.sid} <span style="color:var(--muted)">(${c.rate.toFixed(2)})</span>`).join('<br>') || '<span class="tag bridge">—</span>'}</td>
+      <td class="balance">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td>
+      <td><span class="tag ${cls==='balanced'?'good':cls==='deficit'?'gap':cls==='surplus'?'warn':'bridge'}">${status}</span></td>
+    </tr>`;
+  });
+  document.getElementById('integTableBody').innerHTML = rows.join('') ||
+    '<tr><td colspan="5" class="empty">select techs in subsystem cards above to see integration</td></tr>';
+}
+
+// ============== BRIDGE SLOTS ==============
+function renderBridgeSlots() {
+  // A bridge slot is any orphan or deficit flow in the integration view
+  const aggBySS = {};
+  SUBSYSTEMS.forEach(s => aggBySS[s.id] = aggregateSubsystemIO(s));
+  const slots = [];
+  const flowsByP = {}, flowsByC = {};
+  Object.entries(aggBySS).forEach(([sid, a]) => {
+    Object.entries(a.outputs).forEach(([f, r]) => { (flowsByP[f] = flowsByP[f]||[]).push({sid,r}); });
+    Object.entries(a.inputs).forEach(([f, r]) => { (flowsByC[f] = flowsByC[f]||[]).push({sid,r}); });
+  });
+  const allFlows = new Set([...Object.keys(flowsByP), ...Object.keys(flowsByC)]);
+  allFlows.forEach(f => {
+    const prods = flowsByP[f] || [], cons = flowsByC[f] || [];
+    if (prods.length === 0 && cons.length > 0) {
+      slots.push({ key: `prod_for_${f}`, kind: 'no_producer', flow: f, consumers: cons });
+    } else if (cons.length === 0 && prods.length > 0) {
+      slots.push({ key: `cons_for_${f}`, kind: 'no_consumer', flow: f, producers: prods });
+    } else if (prods.length && cons.length) {
+      const net = prods.reduce((a,p)=>a+p.r,0) - cons.reduce((a,c)=>a+c.r,0);
+      if (net < -0.01) slots.push({ key: `more_${f}`, kind: 'deficit', flow: f, deficit: -net, producers: prods, consumers: cons });
+    }
+  });
+
+  document.getElementById('bridgeSlotCount').textContent = slots.length;
+  document.getElementById('bridgeSlots').innerHTML = slots.length ? slots.map(s => {
+    const note = BRIDGE_NOTES[s.key] || { name: '', description: '' };
+    let title = '';
+    if (s.kind === 'no_producer') title = `Need producer for <code>${s.flow}</code> — consumed by ${s.consumers.map(c => c.sid).join(', ')}`;
+    else if (s.kind === 'no_consumer') title = `Need consumer / sink for <code>${s.flow}</code> — produced by ${s.producers.map(p => p.sid).join(', ')}`;
+    else if (s.kind === 'deficit') title = `Need <strong>${s.deficit.toFixed(2)}</strong> more units of <code>${s.flow}</code>; current producers: ${s.producers.map(p => p.sid).join(', ')}`;
+    return `
+      <div class="bridge-card">
+        <div class="title">${title}</div>
+        <input type="text" placeholder="Bridge tech name (e.g. 'BPA brine processor')"
+          value="${escape(note.name)}" oninput="updateBridgeNote('${s.key}','name',this.value)" style="width:100%; margin-top:6px;" />
+        <textarea placeholder="What does this bridge tech need to do? Inputs / outputs / target TRL / who's investigating..."
+          oninput="updateBridgeNote('${s.key}','description',this.value)">${escape(note.description)}</textarea>
+      </div>
+    `;
+  }).join('') : '<div class="empty">no bridge slots — your architecture closes cleanly! (or you haven\'t selected any techs yet)</div>';
+}
+
+window.updateBridgeNote = function(key, field, val) {
+  if (!BRIDGE_NOTES[key]) BRIDGE_NOTES[key] = { name: '', description: '' };
+  BRIDGE_NOTES[key][field] = val;
+};
+
+// ============== EXPORT ==============
+function exportArchitecture() {
+  const arch = {
+    exported_at: new Date().toISOString(),
+    selections: SELECTED,
+    bridge_notes: BRIDGE_NOTES,
+    totals: (() => {
+      let mass=0,vol=0,power=0,crew=0;
+      SUBSYSTEMS.forEach(s => { const a = aggregateSubsystemIO(s); mass+=a.mass; vol+=a.vol; power+=a.power; crew+=a.crew; });
+      return { mass_kg: mass, volume_m3: vol, power_w: power, crew_hr_per_sol: crew };
+    })(),
+  };
+  const blob = new Blob([JSON.stringify(arch, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `architecture_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============== BROWSE ==============
+function renderBrowse() {
+  fillSelect('filterCategory', [...new Set(DATA.map(d => d.category))].sort());
+  fillSelect('filterSubsystem', [...new Set(DATA.map(d => d.subsystem))].sort());
+  fillSelect('filterReq', [...new Set(DATA.flatMap(d => d.satisfies_requirements || []))].sort());
+  applyFilters();
+}
+['filterCategory','filterSubsystem','filterReq','filterTrl'].forEach(id =>
+  document.addEventListener('change', e => { if (e.target.id === id) applyFilters(); }));
+document.getElementById('searchBox').addEventListener('input', applyFilters);
+
+function applyFilters() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const cat = document.getElementById('filterCategory').value;
+  const sub = document.getElementById('filterSubsystem').value;
+  const req = document.getElementById('filterReq').value;
+  const trl = parseInt(document.getElementById('filterTrl').value || 0);
+  const rows = DATA.filter(d => {
+    if (cat && d.category !== cat) return false;
+    if (sub && d.subsystem !== sub) return false;
+    if (req && !(d.satisfies_requirements || []).includes(req)) return false;
+    if (trl && (d.trl?.value || 0) < trl) return false;
+    if (q) {
+      const hay = [d.id, d.name, d.short_description, d.function_role, ...(d.tags||[]), ...(d.aliases||[])]
+                    .filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  document.getElementById('techTableBody').innerHTML = rows.map(d => `
+    <tr onclick='showDetail("${d.id}")'>
+      <td><code>${d.id}</code></td>
+      <td><strong>${d.name}</strong><br><span style="color:var(--muted);font-size:12px">${escape(d.short_description||'')}</span></td>
+      <td>${d.category}</td>
+      <td>${d.trl?.value ?? '?'}</td>
+      <td>${d.mass_kg?.value ?? '?'}</td>
+      <td>${d.power_w?.nominal ?? '?'}</td>
+      <td>${d.crew_time_hr_per_sol?.nominal ?? '?'}</td>
+      <td>${(d.satisfies_requirements||[]).map(r => `<span class="tag req">${r}</span>`).join('')}</td>
+      <td>${(d.tags||[]).map(t => `<span class="tag">${t}</span>`).join('')}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="9" class="empty">no matches</td></tr>';
+}
+
+window.showDetail = function(id) {
+  const d = DATA.find(x => x.id === id); if (!d) return;
+  document.getElementById('detailContent').innerHTML = `
+    <h2>${d.id} — ${escape(d.name)}</h2>
+    <p>${escape(d.short_description||'')}</p>
+    <p><strong>Function role:</strong> ${escape(d.function_role||'')}</p>
+    <p><strong>Satisfies:</strong> ${(d.satisfies_requirements||[]).map(r => `<span class="tag req">${r}</span>`).join(' ')}</p>
+    <p><strong>Constrained by:</strong> ${(d.constrained_by_requirements||[]).map(r => `<span class="tag req">${r}</span>`).join(' ')}</p>
+    <p><strong>Provides:</strong> ${(d.provides_benefits||[]).map(b => `<span class="tag good">${b}</span>`).join(' ')}</p>
+    <p><strong>Requires:</strong> ${(d.requires_capabilities||[]).map(b => `<span class="tag bridge">${b}</span>`).join(' ')}</p>
+    <details open><summary>Inputs</summary><pre>${escape(JSON.stringify(d.inputs, null, 2))}</pre></details>
+    <details open><summary>Outputs</summary><pre>${escape(JSON.stringify(d.outputs, null, 2))}</pre></details>
+    <details><summary>Full record</summary><pre>${escape(JSON.stringify(d, null, 2))}</pre></details>
+  `;
+  document.getElementById('detailModal').classList.add('open');
+};
+
+// ============== AUTO GAP REPORT (DB-wide) ==============
+function renderAutoGaps() {
+  const cov = {}; ALL_REQS.forEach(r => cov[r] = []);
+  DATA.forEach(d => (d.satisfies_requirements||[]).forEach(r => { (cov[r] = cov[r]||[]).push(d.id); }));
+  const fgaps = ALL_REQS.filter(r => cov[r].length === 0);
+  document.getElementById('fgapCount').textContent = fgaps.length;
+  document.getElementById('functionGaps').innerHTML = fgaps.length ?
+    fgaps.map(r => `<div class="gap-card function"><div class="title">${r}</div></div>`).join('') :
+    '<div class="empty">no function gaps</div>';
+
+  const prods = {}, cons = {};
+  DATA.forEach(d => {
+    (d.outputs||[]).forEach(o => (prods[o.flow_id] = prods[o.flow_id]||[]).push(d.id));
+    (d.inputs||[]).forEach(i => (cons[i.flow_id] = cons[i.flow_id]||[]).push(d.id));
+  });
+  const flows = new Set([...Object.keys(prods), ...Object.keys(cons)]);
+  const igaps = [];
+  flows.forEach(f => {
+    if (!prods[f] && cons[f]) igaps.push({kind:'no_producer', flow:f, who:cons[f]});
+    else if (!cons[f] && prods[f]) igaps.push({kind:'no_consumer', flow:f, who:prods[f]});
+  });
+  document.getElementById('igapCount').textContent = igaps.length;
+  document.getElementById('interfaceGaps').innerHTML = igaps.length ? igaps.map(g => `
+    <div class="gap-card"><div class="title">${g.kind} for <code>${g.flow}</code></div>
+      <div class="meta">touched by: ${g.who.map(t => `<code>${t}</code>`).join(' ')}</div></div>`).join('') :
+    '<div class="empty">no interface gaps</div>';
+
+  const bgaps = [];
+  DATA.forEach(a => {
+    const br = new Set(a.bridges_to||[]);
+    if (!br.size) return;
+    (a.outputs||[]).forEach(o => DATA.forEach(b => {
+      if (b.id === a.id) return;
+      (b.inputs||[]).forEach(i => {
+        if (br.has(i.flow_id) && i.flow_id !== o.flow_id) {
+          bgaps.push({from:a.id, fromFlow:o.flow_id, to:b.id, toFlow:i.flow_id});
+        }
+      });
+    }));
+  });
+  document.getElementById('bgapCount').textContent = bgaps.length;
+  document.getElementById('bridgeGaps').innerHTML = bgaps.length ? bgaps.map(g => `
+    <div class="gap-card bridge"><div class="title">${g.from} → ${g.to}</div>
+      <div class="meta">${g.from} outputs <code>${g.fromFlow}</code>; ${g.to} wants <code>${g.toFlow}</code> via bridges_to</div></div>`).join('') :
+    '<div class="empty">no bridge gaps</div>';
+
+  document.getElementById('gapCount').textContent = fgaps.length + igaps.length + bgaps.length;
+}
+
+// ============== REQS COVERAGE ==============
+function renderReqs() {
+  const cov = {}; ALL_REQS.forEach(r => cov[r] = []);
+  DATA.forEach(d => (d.satisfies_requirements||[]).forEach(r => { (cov[r] = cov[r]||[]).push(d.id); }));
+  document.getElementById('reqTableBody').innerHTML = Object.entries(cov).map(([r, t]) => `
+    <tr style="${t.length===0?'background:var(--gap-soft)':''}">
+      <td><code>${r}</code></td><td>${t.length}</td>
+      <td>${t.map(x => `<code>${x}</code>`).join(' ')}</td>
+    </tr>`).join('');
+}
+
+// ============== INIT ==============
+window.addEventListener('DOMContentLoaded', () => setTimeout(tryAutoLoad, 100));
+</script>
+
+</body>
+</html>
